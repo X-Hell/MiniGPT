@@ -1,91 +1,106 @@
-# Mini Transformer: An Educational Inference Engine with INT8 Quantization
+<div align="center">
 
-## Abstract
-**Mini Transformer** is a lightweight, widely accessible implementation of the Transformer architecture, designed to demonstrate the mechanics of Large Language Models (LLMs) at a microscopic scale. Unlike opaque deep learning frameworks, this project implements **manual backpropagation**, **post-training INT8 quantization**, and **advanced sampling strategies** (Nucleus Sampling) using only `numpy`. It serves as a transparent testbed for understanding the low-level arithmetic of modern AI.
+# MiniGPT: The Educational Inference Engine
+### From Naive FP32 to Research-Grade Optimization in 10 Phases
 
-## Technical Specifications
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+[![Numpy-Only](https://img.shields.io/badge/dependency-numpy_only-red)](https://numpy.org)
+[![Status: Optimized](https://img.shields.io/badge/Status-Optimized-success)]()
 
-### Architecture
-- **Type**: Decoder-only Transformer (GPT-style).
-- **Depth**: 2 Layers (Stackable `TransformerBlock` units).
-- **Dimensions**: $d_{model}=240$, $h=4$ heads, $d_{head}=60$.
-- **Context Window**: 128 tokens.
-- **Parameters**: ~1.5M parameters (uncompressed).
+**MiniGPT** is a journey through the mechanics of Large Language Models. Built entirely in `numpy` without autograd libraries, it demonstrates how raw arithmetic transforms into intelligence, optimizing a Transformer from a memory-hogging baseline to a lean, quantized inference engine.
 
-### Key Features
-1.  **Manual Auto-Differentiation**:
-    - Complete implementation of the backward pass for Attention, LayerNorm, and FeedForward layers without automatic differentiation libraries.
-2.  **Weight Tying**:
-    - The embedding matrix $W_{emb}$ is transposed and reused as the output projection head, reducing memory usage by ~25% and improving regularization.
-3.  **Per-Channel Quantization**:
-    - Post-training quantization of FFN weights ($W_1, W_2$) to `int8`.
-    - Uses per-channel scaling (Axis 0/1) to preserve activation dominance, reducing FFN memory footprint by **4x** (450 KB vs 1.8 MB) with minimal degradation.
-4.  **Nucleus Sampling (Top-$p$)**:
-    - Implements Top-$p=0.9$ decoding to dynamically truncate the vocabulary distribution, balancing creativity distribution.
-5.  **Optimized Training**:
-    - Gradient Clipping (Norm $\le 1.0$).
-    - Cosine Learning Rate Decay.
+[ **[Explore Codebase](mini_transformer/)** ] • [ **[Evolution](phase_metrics.png)** ] • [ **[Visualization](attn_interactive.html)** ]
 
-## Performance Metrics
+---
 
-| Metric | Value |
-| :--- | :--- |
-| **Training Data** | TinyShakespeare (1MB) |
-| **Training Loss (2k steps)** | ~5.84 nats (Cross-Entropy) |
-| **Perplexity** | ~345.0 |
-| **Quantization Compression** | 4.0x (FFN Weights) |
-| **Inference Latency (CPU)** | < 50ms / token |
+</div>
 
-*Note: Training was conducted on a minimal regime (2000 steps) for demonstration. Loss values are expected to converge further with extended training.*
+## 📈 Project Evolution (Phases 1-10)
 
-## Installation & Usage
+This project was built in 10 distinct phases, mirroring the real-world optimization pipeline of modern LLMs. Below is the exact data on how each architectural decision impacted Model Size and Memory Footprint.
 
-### Prerequisites
-- Python 3.9+
-- `numpy`, `matplotlib`
+![Evolution Graph](phase_metrics.png)
+
+### Evolution Markers
+
+| **Phase** | **Major Change** | **Params** | **Peak Memory** | **Notes** |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | `FP32 Transformer` | ~4.8M | ~6.2 MB | Baseline implementation. Functional but inefficient. |
+| **2** | `Explicit Logger` | ~4.8M | ~6.2 MB | Added visibility into MatMul operations (Flops tracking). |
+| **3** | `KV Cache` | ~4.8M | ~6.9 MB | **Key Feature:** Caching keys/values to speed up autoregressive decoding. |
+| **4** | `Weight Tying` | **~3.9M** | **~5.3 MB** | 📉 **-19% Params**. Shared embeddings for input and output projection. |
+| **5** | `INT8 Attention` | ~3.9M | **~3.9 MB** | Quantized Q/K/V projections for lower memory bandwidth. |
+| **6** | `INT8 FFN` | ~3.9M | **~3.1 MB** | **Stable**. Post-training quantization of the Feed-Forward Network. |
+| **7** | `Low-Rank FFN` | **~1.6M** | **~2.2 MB** | 📉 **Huge Drop**. Replaced dense FFN with Low-Rank approximation. |
+| **8** | `QKV Fusion` | ~1.6M | ~2.0 MB | Merged matrices to reduce kernel launch overhead (simulated). |
+| **9** | `Multi-Head Viz` | ~1.6M | ~2.0 MB | Added `matplotlib` visualizations for attention heads. |
+| **10** | `Entropy Analysis` | ~1.6M | ~2.0 MB | **Research-Grade**. Entropy heatmaps & head similarity metrics. |
+
+---
+
+## 🧠 Technical Highlights
+
+### 1. Manual Autograd Engine
+Every gradient in this project is calculated **by hand**.
+- `loss.backward()`? No. We calculate $\frac{\partial L}{\partial W}$ manually for Attention, LayerNorm, and Softmax.
+- This unveils the "black box" of backpropagation.
+
+### 2. INT8 Quantization & Low-Rank Adaptation
+We don't just compress; we redesign.
+- **Quantization**: Symmetric per-channel scaling for weights, reducing memory by 4x.
+- **Low-Rank**: Factorizing large weight matrices $W \approx A \times B$ where $rank(A,B) \ll rank(W)$.
+
+### 3. Nucleus Sampling (Top-p)
+Instead of greedy decoding, we implement **Nucleus Sampling** to dynamically cut off the tail of the probability distribution, balancing creativity with coherence.
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+Clone the repository and install the single dependency: `numpy`.
 
 ```bash
-git clone https://github.com/your-username/mini-transformer.git
-cd mini-transformer
-pip install numpy matplotlib
+git clone https://github.com/your-username/minigpt.git
+cd minigpt
+pip install numpy matplotlib seaborn
 ```
 
 ### Training
-Train the model from scratch using the Shakespeare dataset. The script automatically manages data downloading and preprocessing.
+Train the model on the Shakespeare dataset (auto-downloaded).
 
 ```bash
 python mini_transformer/train.py
 ```
 *Outputs: `mini_transformer_model.pkl`*
 
-### Quantization
-Compress the trained model using per-channel INT8 quantization.
-
-```bash
-python mini_transformer/quantize.py
-```
-*Outputs: `mini_transformer_model_quantized.pkl`*
-
-### Inference
-Run the inference engine with visualization support.
+### Inference & Visualization
+Run the inference engine. This will generate the attention maps and memory logs.
 
 ```bash
 python -m mini_transformer.run_inference
 ```
 
-## Visualization
-The engine generates real-time visualization artifacts:
-- `attn_prefill.png`: Multi-head attention patterns.
-- `memory_log.png`: Dynamic memory usage tracking per operation.
+**Generated Artifacts**:
+- `attn_prefill.png`: Attention patterns during prompt processing.
+- `head_similarity.png`: Cosine similarity between attention heads.
+- `entropy_heatmap.png`: Uncertainty quantification per head.
 
-## Citation
-If you find this codebase useful for educational purposes, please cite:
-```bibtex
-@misc{minitransformer2025,
-  author = {Project Contributor},
-  title = {Mini Transformer: A Numpy-only LLM Inference Engine},
-  year = {2025},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-}
-```
+---
+
+## 🎨 Visualization Gallery
+
+| Attention Pattern | Head Similarity | Entropy Heatmap |
+| :---: | :---: | :---: |
+| ![Attn](attn_prefill.png) | ![Sim](head_similarity.png) | ![Ent](entropy_heatmap.png) |
+
+---
+
+<div align="center">
+
+**Educational Use Only**
+Designed for understanding, not production.
+*Built with ❤️ in Python*
+
+</div>

@@ -59,6 +59,7 @@ class EmbeddingLayer:
         T = len(token_ids)
         tokens_emb = self.W_emb[token_ids] # (T, D)
         
-        pos_emb = self.PE[start_pos : start_pos + T] # (T, D)
+        # RoPE is now used in Attention, so we remove absolute PE here.
+        # pos_emb = self.PE[start_pos : start_pos + T] # (T, D)
         
-        return tokens_emb + pos_emb
+        return tokens_emb # + pos_emb

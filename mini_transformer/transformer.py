@@ -2,180 +2,198 @@ import numpy as np
 from .matmul import explicit_matmul
 from .attention import MultiHeadAttention
 
-class LayerNorm:
+class RMSNorm:
     def __init__(self, d_model, eps=1e-5):
         self.gamma = np.ones(d_model, dtype=np.float32)
-        self.beta = np.zeros(d_model, dtype=np.float32)
         self.eps = eps
         
     def forward(self, x):
         # x: (N, D)
-        self.mean = np.mean(x, axis=-1, keepdims=True)
-        self.var = np.var(x, axis=-1, keepdims=True)
-        self.std = np.sqrt(self.var + self.eps)
-        self.x_norm = (x - self.mean) / self.std
-        return self.gamma * self.x_norm + self.beta
+        self.ms = np.mean(x**2, axis=-1, keepdims=True)
+        self.rms = np.sqrt(self.ms + self.eps)
+        self.x_norm = x / self.rms
+        return self.gamma * self.x_norm
         
     def backward(self, dout):
-        # dout: (N, D)
-        # dBeta = sum(dout, axis=0)
-        # dGamma = sum(dout * x_norm, axis=0)
+        # dout: (..., D)
+        # Handle flattening
+        orig_shape = dout.shape
+        D = orig_shape[-1]
+        dout_flat = dout.reshape(-1, D)
+        x_norm_flat = self.x_norm.reshape(-1, D)
+        x_flat = (self.x_norm * self.rms).reshape(-1, D) # Reconstruct x
         
-        D = dout.shape[-1]
-        
-        if len(dout.shape) == 3:
-             # handle (B, T, D) -> flatten to (B*T, D)
-             dout_flat = dout.reshape(-1, D)
-             x_norm_flat = self.x_norm.reshape(-1, D)
-             N = dout_flat.shape[0]
-        else:
-             dout_flat = dout
-             x_norm_flat = self.x_norm
-             
-        # Debug
-        # print(f"LN Backward: dout_flat {dout_flat.shape}, gamma {self.gamma.shape}")
-        
-        self.d_beta = np.sum(dout_flat, axis=0)
+        # dGamma
         self.d_gamma = np.sum(dout_flat * x_norm_flat, axis=0)
         
         # dX
         # dl/dx_norm = dout * gamma
         dx_norm = dout_flat * self.gamma
         
-        # dl/dvar = sum(dl/dx_norm * (x-mean) * -0.5 * std^-3)
-        # dl/dmean = sum(dl/dx_norm * -1/std) + dl/dvar * sum(-2*(x-mean))/M
+        # RMSNorm Backward
+        # dx = 1/rms * (dx_norm - x_norm * mean(dx_norm * x_norm))
+        # Wait, derivation check:
+        # y = x / rms
+        # dy = dx/rms - x * drms / rms^2
+        # drms = 0.5/rms * dms
+        # dms = 2x/D * dx
+        # ...
+        # Standard streamlined formula:
+        # dx = (1/rms) * (dx_norm - x_norm * mean(dx_norm * x_norm))
+        # Note: mean is over D dimension.
         
-        # Standard LN gradient formula (for simplicity)
-        # dx = 1/std * (dx_norm - mean(dx_norm) - x_norm * mean(dx_norm * x_norm))
-        # Note: mean() here is over dimension D
+        mean_compound = np.mean(dx_norm * x_norm_flat, axis=-1, keepdims=True)
+        dx = (dx_norm - x_norm_flat * mean_compound) / self.rms.reshape(-1, 1) # rms was (N, 1)
         
-        mean_dx_norm = np.mean(dx_norm, axis=-1, keepdims=True)
-        mean_dx_norm_x_norm = np.mean(dx_norm * x_norm_flat, axis=-1, keepdims=True)
-        
-        dx = (dx_norm - mean_dx_norm - x_norm_flat * mean_dx_norm_x_norm) / self.std # Note: self.std broadcast might need reshape if 3D
-        
-        if len(dout.shape) == 3:
-            dx = dx.reshape(dout.shape)
-            
-        return dx
+        return dx.reshape(orig_shape)
 
-    def apply_grads(self, lr=1e-3):
-        self.gamma -= lr * self.d_gamma
-        self.beta -= lr * self.d_beta
+    def apply_grads(self, lr=1e-3, optimizer=None):
+        if optimizer:
+            optimizer.step([self.gamma], [self.d_gamma])
+        else:
+            self.gamma -= lr * self.d_gamma
 
 class FeedForward:
-    def __init__(self, d_model, d_ff):
-        # W1: d_model -> d_ff
-        # W2: d_ff -> d_model
+    def __init__(self, d_model, d_ff, rank=32):
+        self.d_model = d_model
+        self.d_ff = d_ff
+        self.rank = rank
+        
+        # Low-Rank Decomposition
+        # Replace W1 (D, Dff) with W1a (D, r) and W1b (r, Dff)
+        # Replace W2 (Dff, D) with W2a (Dff, r) and W2b (r, D)
+        
         scale = 1.0 / np.sqrt(d_model)
-        self.W1 = np.random.normal(scale=scale, size=(d_model, d_ff)).astype(np.float32)
+        self.W1a = np.random.normal(scale=scale, size=(d_model, rank)).astype(np.float32)
+        self.W1b = np.random.normal(scale=scale, size=(rank, d_ff)).astype(np.float32)
         
         scale_2 = 1.0 / np.sqrt(d_ff)
-        self.W2 = np.random.normal(scale=scale_2, size=(d_ff, d_model)).astype(np.float32)
+        self.W2a = np.random.normal(scale=scale_2, size=(d_ff, rank)).astype(np.float32)
+        self.W2b = np.random.normal(scale=scale_2, size=(rank, d_model)).astype(np.float32)
         
         self.quantized = False
-        print(f"[FFN] Weights Mem: {(self.W1.nbytes + self.W2.nbytes)/1024:.2f} KB")
+        mem = (self.W1a.nbytes + self.W1b.nbytes + self.W2a.nbytes + self.W2b.nbytes)
+        print(f"[FFN] Low-Rank ({rank}) Weights Mem: {mem/1024:.2f} KB (Full would be {(d_model*d_ff*2*4)/1024:.2f} KB)")
     
     def quantize(self):
         """Quantizes weights to INT8."""
         if self.quantized:
             return
             
-        print("[FFN] Quantizing to INT8 (Per-Channel)...")
+        print(f"[FFN] Quantizing Low-Rank matrices to INT8...")
         
-        # W1: (D, d_ff) -> Scale per column (d_ff)
-        # Using axis=0: max over input dim, keeping output dim scales
-        max_val_1 = np.max(np.abs(self.W1), axis=0) # Shape (d_ff,)
-        self.w1_scale = max_val_1 / 127.0
-        self.w1_scale[self.w1_scale == 0] = 1.0 # Avoid div by zero
+        from .quant_utils import quantize_matrix
         
-        # Quantize: W / scale. Scale broadcast (1, d_ff)
-        self.W1_int8 = np.round(self.W1 / self.w1_scale).astype(np.int8)
-        
-        # W2: (d_ff, D) -> Scale per column (D)
-        max_val_2 = np.max(np.abs(self.W2), axis=0) # Shape (D,)
-        self.w2_scale = max_val_2 / 127.0
-        self.w2_scale[self.w2_scale == 0] = 1.0
-        
-        self.W2_int8 = np.round(self.W2 / self.w2_scale).astype(np.int8)
+        self.W1a_int8, self.w1a_scale = quantize_matrix(self.W1a)
+        self.W1b_int8, self.w1b_scale = quantize_matrix(self.W1b)
+        self.W2a_int8, self.w2a_scale = quantize_matrix(self.W2a)
+        self.W2b_int8, self.w2b_scale = quantize_matrix(self.W2b)
         
         # Release float weights
-        del self.W1
-        del self.W2
+        del self.W1a, self.W1b, self.W2a, self.W2b
         self.quantized = True
         
-        mem_new = self.W1_int8.nbytes + self.W2_int8.nbytes + self.w1_scale.nbytes + self.w2_scale.nbytes
+        mem_new = (self.W1a_int8.nbytes + self.W1b_int8.nbytes + 
+                   self.W2a_int8.nbytes + self.W2b_int8.nbytes +
+                   self.w1a_scale.nbytes + self.w1b_scale.nbytes +
+                   self.w2a_scale.nbytes + self.w2b_scale.nbytes)
+                   
         print(f"[FFN] Quantized Mem: {mem_new/1024:.2f} KB")
 
     def forward(self, x):
         # x: (..., D)
-        # Handle quantization dequant on the fly
-        
-        # Flatten for matmul
         orig_shape = x.shape
         x_flat = x.reshape(-1, orig_shape[-1])
         
         if self.quantized:
-            # Dequantize W1 for matmul
-            # This is "fake" INT8 inference in that we dequantize to float for the mul,
-            # but we save storage memory.
-            W1_deq = self.W1_int8.astype(np.float32) * self.w1_scale
-            h = explicit_matmul(x_flat, W1_deq, "FFN_1 (INT8)")
+            # Dequantize on fly
+            W1a = self.W1a_int8.astype(np.float32) * self.w1a_scale
+            W1b = self.W1b_int8.astype(np.float32) * self.w1b_scale
+            
+            # Layer 1: x @ W1a @ W1b
+            h_inter = explicit_matmul(x_flat, W1a, "FFN_1a (LR)")
+            h = explicit_matmul(h_inter, W1b, "FFN_1b (LR)")
         else:
-            h = explicit_matmul(x_flat, self.W1, "FFN_1")
+            h_inter = explicit_matmul(x_flat, self.W1a, "FFN_1a")
+            h = explicit_matmul(h_inter, self.W1b, "FFN_1b")
             
         # ReLU (In-place)
         np.maximum(h, 0, out=h)
         
         if self.quantized:
-            W2_deq = self.W2_int8.astype(np.float32) * self.w2_scale
-            out = explicit_matmul(h, W2_deq, "FFN_2 (INT8)")
+            W2a = self.W2a_int8.astype(np.float32) * self.w2a_scale
+            W2b = self.W2b_int8.astype(np.float32) * self.w2b_scale
+            
+            h2_inter = explicit_matmul(h, W2a, "FFN_2a (LR)")
+            out = explicit_matmul(h2_inter, W2b, "FFN_2b (LR)")
         else:
-            out = explicit_matmul(h, self.W2, "FFN_2")
+            h2_inter = explicit_matmul(h, self.W2a, "FFN_2a")
+            out = explicit_matmul(h2_inter, self.W2b, "FFN_2b")
             
         return out.reshape(orig_shape)
 
     def backward(self, dout, x_in):
-        """
-        dout: (..., D)
-        """
+        # Full Low-Rank Backward
         if self.quantized:
-            raise NotImplementedError("Training quantized FFN not supported")
+            raise NotImplementedError("Gradient calc on quantized model not supported")
             
         orig_shape = x_in.shape
         x_flat = x_in.reshape(-1, orig_shape[-1])
         dout_flat = dout.reshape(-1, orig_shape[-1])
         
-        # Recompute forward
-        h = np.matmul(x_flat, self.W1)
+        # Recompute Forward
+        # 1. W1
+        h1a = np.matmul(x_flat, self.W1a)
+        h = np.matmul(h1a, self.W1b)
         h_relu = np.maximum(h, 0)
         
-        # dW2
-        # Out = H_relu @ W2
-        dW2 = np.matmul(h_relu.T, dout_flat)
-        dh_relu = np.matmul(dout_flat, self.W2.T)
+        # 2. W2
+        # out = RELU(h) @ W2a @ W2b
+        h2a = np.matmul(h_relu, self.W2a)
+        # out = h2a @ W2b
+        
+        # Backward Pass
+        # dOut = dout_flat
+        
+        # dW2b
+        dW2b = np.matmul(h2a.T, dout_flat)
+        dh2a = np.matmul(dout_flat, self.W2b.T)
+        
+        # dW2a
+        dW2a = np.matmul(h_relu.T, dh2a)
+        dh_relu_pre = np.matmul(dh2a, self.W2a.T)
         
         # dReLU
-        dh = dh_relu * (h > 0)
+        dh = dh_relu_pre * (h > 0)
         
-        # dW1
-        dW1 = np.matmul(x_flat.T, dh)
-        dx_flat = np.matmul(dh, self.W1.T)
+        # dW1b
+        dW1b = np.matmul(h1a.T, dh)
+        dh1a = np.matmul(dh, self.W1b.T)
         
-        return dx_flat.reshape(orig_shape), (dW1, dW2)
+        # dW1a
+        dW1a = np.matmul(x_flat.T, dh1a)
+        dx_flat = np.matmul(dh1a, self.W1a.T)
+        
+        return dx_flat.reshape(orig_shape), (dW1a, dW1b, dW2a, dW2b)
 
-    def apply_grads(self, grads, lr=1e-3):
-        dW1, dW2 = grads
-        self.W1 -= lr * dW1
-        self.W2 -= lr * dW2
+    def apply_grads(self, grads, lr=1e-3, optimizer=None):
+        dW1a, dW1b, dW2a, dW2b = grads
+        if optimizer:
+            optimizer.step([self.W1a, self.W1b, self.W2a, self.W2b], 
+                           [dW1a, dW1b, dW2a, dW2b])
+        else:
+            self.W1a -= lr * dW1a
+            self.W1b -= lr * dW1b
+            self.W2a -= lr * dW2a
+            self.W2b -= lr * dW2b
 
 class TransformerBlock:
-    def __init__(self, d_model, n_heads, d_ff):
+    def __init__(self, d_model, n_heads, d_ff, ffn_rank=32):
         from .attention import MultiHeadAttention
-        self.ln1 = LayerNorm(d_model)
+        self.ln1 = RMSNorm(d_model)
         self.attn = MultiHeadAttention(d_model, n_heads)
-        self.ln2 = LayerNorm(d_model)
-        self.ffn = FeedForward(d_model, d_ff)
+        self.ln2 = RMSNorm(d_model)
+        self.ffn = FeedForward(d_model, d_ff, rank=ffn_rank)
         
     def forward(self, x, kv_cache, start_pos, layer_idx):
         # x: (B, T, D)
@@ -225,15 +243,16 @@ class TransformerBlock:
         
         return dX, (ffn_grads, attn_grads)
 
-    def apply_grads(self, grads, lr):
+    def apply_grads(self, grads, lr, optimizer=None):
         ffn_grads, attn_grads = grads
-        self.ffn.apply_grads(ffn_grads, lr)
-        self.attn.apply_grads(attn_grads, lr)
-        self.ln1.apply_grads(lr)
-        self.ln2.apply_grads(lr)
+        self.ffn.apply_grads(ffn_grads, lr, optimizer)
+        self.attn.apply_grads(attn_grads, lr, optimizer)
+        self.ln1.apply_grads(lr, optimizer)
+        self.ln2.apply_grads(lr, optimizer)
         
     def quantize(self):
         self.ffn.quantize()
+        self.attn.quantize()
 
 class MiniTransformer:
     def __init__(self, vocab_size, d_model=240, n_heads=4, max_len=128, n_layers=2):
@@ -249,9 +268,9 @@ class MiniTransformer:
         
         self.layers = []
         for _ in range(n_layers):
-            self.layers.append(TransformerBlock(d_model, n_heads, d_model * 4))
+            self.layers.append(TransformerBlock(d_model, n_heads, d_model * 4, ffn_rank=32))
             
-        self.ln_f = LayerNorm(d_model)
+        self.ln_f = RMSNorm(d_model)
         
         print(f"[Transformer] Initialized {n_layers} layers (Weight Tying Enabled).")
 
@@ -317,20 +336,41 @@ class MiniTransformer:
         
         return dW_emb, layer_grads, dX_emb
 
-    def apply_grads(self, grads, token_ids, lr=1e-3):
+    def apply_grads(self, grads, token_ids, lr=1e-3, optimizer=None):
         dW_emb_out, layer_grads, dX_emb = grads
         
         # Layers
         for layer, l_grads in zip(self.layers, layer_grads):
-            layer.apply_grads(l_grads, lr)
+            layer.apply_grads(l_grads, lr, optimizer)
             
-        self.ln_f.apply_grads(lr)
+        self.ln_f.apply_grads(lr, optimizer)
         
         # Embeddings
-        self.embeddings.W_emb -= lr * dW_emb_out
+        # Note: dW_emb_out is gradient from output projection
+        # dX_emb is gradient from input lookup
+        # We need to combine them or update separately?
+        # AdamW needs one update per param.
+        # So we should accumulate gradients first.
         
-        # Input gradients
+        # Accumulate input gradients into a full dW_emb matrix
+        # dX_emb: (B, T, D). token_ids: (B, T)
+        # We need to scatter add.
+        
+        dW_total = dW_emb_out.copy() # Already full shape (V, D)
+        
+        # Scatter add dX_emb
         B, T = token_ids.shape
         flat_ids = token_ids.flatten()
         flat_grads = dX_emb.reshape(-1, self.d_model)
-        np.add.at(self.embeddings.W_emb, flat_ids, -lr * flat_grads)
+        
+        # Use simple loop or ufunc (numpy doesn't have partial scatter add easily for Adam state, 
+        # but for gradient accumulation we can use at)
+        # Wait, if we use Adam, we pass (W, dW).
+        # We must construct the full dW.
+        
+        np.add.at(dW_total, flat_ids, flat_grads)
+        
+        if optimizer:
+            optimizer.step([self.embeddings.W_emb], [dW_total])
+        else:
+            self.embeddings.W_emb -= lr * dW_total

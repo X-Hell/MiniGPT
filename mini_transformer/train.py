@@ -10,6 +10,7 @@ sys.path.append(os.getcwd())
 from mini_transformer.tokenizer import MiniTokenizer, TokenizerConfig
 from mini_transformer.transformer import MiniTransformer
 from mini_transformer.matmul import explicit_matmul, _LOGGER
+from mini_transformer.optimizer import AdamW
 
 def cross_entropy_loss(logits, targets):
     """
@@ -41,12 +42,12 @@ def cross_entropy_loss(logits, targets):
     
     return loss, dlogits.reshape(B, T, V)
 
-def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=3e-4):
+def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=5e-4):
     print("=== Mini Transformer Training ===")
     
     # Config
     B = 1
-    T = 64 # Context length for training
+    # T schedule implemented below
     
     # 1. Dataset
     # Check if we have data, logic inside main block ensures creation or we have downloaded it.
@@ -59,7 +60,7 @@ def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=3e-4)
     with open(text_path, "r") as f:
         text = f.read()
         
-    config = TokenizerConfig(vocab_size=1024)
+    config = TokenizerConfig(vocab_size=256)
     tokenizer = MiniTokenizer(config)
     tokens = tokenizer.encode(text)
     tokens = np.array(tokens)
@@ -67,31 +68,46 @@ def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=3e-4)
     
     # Init Model
     model = MiniTransformer(
-        vocab_size=1024,
+        vocab_size=256,
         d_model=240,
         n_heads=4,
         max_len=128, # Must covers T
         n_layers=2
     )
     
+    # Optimizer
+    optimizer = AdamW(lr=lr, betas=(0.9, 0.95), weight_decay=0.01)
+    
     # 3. Loop
     losses = []
     
+    # Curriculum Schedule: T starts at 16, ends at 128
+    # We linearly interpolate T
+    
     for step in range(steps):
-        # LR Schedule: Cosine
-        # lr_now = 0.5 * lr * (1 + np.cos(np.pi * step / steps))
-        # User requested sensible schedule. 
-        lr_now = lr # Let's stick to constant or simple decay if steps are large
-        if step < 100: # Warmup
-             lr_now = lr * (step / 100)
+        # LR Schedule: Warmup + Cosine
+        lr_now = lr 
+        if step < 200: # Warmup
+             lr_now = lr * (step / 200)
         else:
-             progress = (step - 100) / (steps - 100)
+             progress = (step - 200) / (steps - 200)
              lr_now = 0.5 * lr * (1 + np.cos(np.pi * progress))
+             
+        # Update optimizer LR
+        optimizer.lr = lr_now
+             
+        # Curriculum
+        # Fraction of training done
+        train_frac = step / steps
+        # Scale T from 16 to 128 (max_len is 128)
+        # We clamp it
+        current_T = int(16 + (128 - 16) * train_frac)
+        current_T = min(current_T, 128)
     
         # Sample batch
-        ix = np.random.randint(0, len(tokens) - T - 1, size=(B,))
-        x = np.stack([tokens[i:i+T] for i in ix])
-        y = np.stack([tokens[i+1:i+T+1] for i in ix])
+        ix = np.random.randint(0, len(tokens) - current_T - 1, size=(B,))
+        x = np.stack([tokens[i:i+current_T] for i in ix])
+        y = np.stack([tokens[i+1:i+current_T+1] for i in ix])
         
         # Forward
         logits, _ = model.forward(x)
@@ -109,11 +125,12 @@ def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=3e-4)
         
         for l_grads in layer_grads:
             ffn_grads, attn_grads = l_grads
-            dW1, dW2 = ffn_grads
-            dW_q, dW_k, dW_v, dW_o = attn_grads
+            dW1a, dW1b, dW2a, dW2b = ffn_grads
+            # attn_grads is now (dW_qkv, dW_o) due to fusion
+            dW_qkv, dW_o = attn_grads
             
-            sq_sum += np.sum(dW1**2) + np.sum(dW2**2)
-            sq_sum += np.sum(dW_q**2) + np.sum(dW_k**2) + np.sum(dW_v**2) + np.sum(dW_o**2)
+            sq_sum += np.sum(dW1a**2) + np.sum(dW1b**2) + np.sum(dW2a**2) + np.sum(dW2b**2)
+            sq_sum += np.sum(dW_qkv**2) + np.sum(dW_o**2)
             
         grad_norm = np.sqrt(sq_sum)
         max_norm = 1.0
@@ -122,10 +139,22 @@ def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=3e-4)
         if grad_norm > max_norm:
             clip_scale = max_norm / grad_norm
             
-        lr_clipped = lr_now * clip_scale
+        # Helper to scale structured grads
+        def scale_grads(g, scale):
+            if isinstance(g, tuple):
+                return tuple(scale_grads(x, scale) for x in g)
+            elif isinstance(g, list):
+                return [scale_grads(x, scale) for x in g]
+            elif isinstance(g, np.ndarray):
+                return g * scale
+            return g
+            
+        if clip_scale < 1.0:
+            grads = scale_grads(grads, clip_scale)
         
         # Update
-        model.apply_grads(grads, x, lr=lr_clipped)
+        # Note: apply_grads signature update in transformer.py uses optimizer if passed
+        model.apply_grads(grads, x, lr=lr_now, optimizer=optimizer)
         
         if step % 50 == 0:
             print(f"Step {step:4d} | Loss: {loss:.4f} | PPL: {np.exp(loss):.2f} | LR: {lr_now:.5f} | Norm: {grad_norm:.2f}")

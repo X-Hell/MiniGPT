@@ -54,49 +54,43 @@ class RMSNorm:
             self.gamma -= lr * self.d_gamma
 
 class FeedForward:
-    def __init__(self, d_model, d_ff, rank=32):
+    def __init__(self, d_model, d_ff, rank=None):
+        # Ignore rank argument to maintain signature compatibility but do standard FFN
         self.d_model = d_model
         self.d_ff = d_ff
-        self.rank = rank
         
-        # Low-Rank Decomposition
-        # Replace W1 (D, Dff) with W1a (D, r) and W1b (r, Dff)
-        # Replace W2 (Dff, D) with W2a (Dff, r) and W2b (r, D)
+        # Standard FFN: Expansion -> Activation -> Projection
+        # W1: (D, D_ff)
+        # W2: (D_ff, D)
         
-        scale = 1.0 / np.sqrt(d_model)
-        self.W1a = np.random.normal(scale=scale, size=(d_model, rank)).astype(np.float32)
-        self.W1b = np.random.normal(scale=scale, size=(rank, d_ff)).astype(np.float32)
+        scale_1 = 1.0 / np.sqrt(d_model)
+        self.W1 = np.random.normal(scale=scale_1, size=(d_model, d_ff)).astype(np.float32)
         
         scale_2 = 1.0 / np.sqrt(d_ff)
-        self.W2a = np.random.normal(scale=scale_2, size=(d_ff, rank)).astype(np.float32)
-        self.W2b = np.random.normal(scale=scale_2, size=(rank, d_model)).astype(np.float32)
+        self.W2 = np.random.normal(scale=scale_2, size=(d_ff, d_model)).astype(np.float32)
         
         self.quantized = False
-        mem = (self.W1a.nbytes + self.W1b.nbytes + self.W2a.nbytes + self.W2b.nbytes)
-        print(f"[FFN] Low-Rank ({rank}) Weights Mem: {mem/1024:.2f} KB (Full would be {(d_model*d_ff*2*4)/1024:.2f} KB)")
+        mem = (self.W1.nbytes + self.W2.nbytes)
+        print(f"[FFN] Standard ({d_model}->{d_ff}->{d_model}) Weights Mem: {mem/1024:.2f} KB")
     
     def quantize(self):
         """Quantizes weights to INT8."""
         if self.quantized:
             return
             
-        print(f"[FFN] Quantizing Low-Rank matrices to INT8...")
+        print(f"[FFN] Quantizing Standard matrices to INT8...")
         
         from .quant_utils import quantize_matrix
         
-        self.W1a_int8, self.w1a_scale = quantize_matrix(self.W1a)
-        self.W1b_int8, self.w1b_scale = quantize_matrix(self.W1b)
-        self.W2a_int8, self.w2a_scale = quantize_matrix(self.W2a)
-        self.W2b_int8, self.w2b_scale = quantize_matrix(self.W2b)
+        self.W1_int8, self.w1_scale = quantize_matrix(self.W1)
+        self.W2_int8, self.w2_scale = quantize_matrix(self.W2)
         
         # Release float weights
-        del self.W1a, self.W1b, self.W2a, self.W2b
+        del self.W1, self.W2
         self.quantized = True
         
-        mem_new = (self.W1a_int8.nbytes + self.W1b_int8.nbytes + 
-                   self.W2a_int8.nbytes + self.W2b_int8.nbytes +
-                   self.w1a_scale.nbytes + self.w1b_scale.nbytes +
-                   self.w2a_scale.nbytes + self.w2b_scale.nbytes)
+        mem_new = (self.W1_int8.nbytes + self.W2_int8.nbytes +
+                   self.w1_scale.nbytes + self.w2_scale.nbytes)
                    
         print(f"[FFN] Quantized Mem: {mem_new/1024:.2f} KB")
 
@@ -107,33 +101,23 @@ class FeedForward:
         
         if self.quantized:
             # Dequantize on fly
-            W1a = self.W1a_int8.astype(np.float32) * self.w1a_scale
-            W1b = self.W1b_int8.astype(np.float32) * self.w1b_scale
-            
-            # Layer 1: x @ W1a @ W1b
-            h_inter = explicit_matmul(x_flat, W1a, "FFN_1a (LR)")
-            h = explicit_matmul(h_inter, W1b, "FFN_1b (LR)")
+            W1 = self.W1_int8.astype(np.float32) * self.w1_scale
+            h = explicit_matmul(x_flat, W1, "FFN_1 (INT8)")
         else:
-            h_inter = explicit_matmul(x_flat, self.W1a, "FFN_1a")
-            h = explicit_matmul(h_inter, self.W1b, "FFN_1b")
+            h = explicit_matmul(x_flat, self.W1, "FFN_1")
             
         # ReLU (In-place)
         np.maximum(h, 0, out=h)
         
         if self.quantized:
-            W2a = self.W2a_int8.astype(np.float32) * self.w2a_scale
-            W2b = self.W2b_int8.astype(np.float32) * self.w2b_scale
-            
-            h2_inter = explicit_matmul(h, W2a, "FFN_2a (LR)")
-            out = explicit_matmul(h2_inter, W2b, "FFN_2b (LR)")
+            W2 = self.W2_int8.astype(np.float32) * self.w2_scale
+            out = explicit_matmul(h, W2, "FFN_2 (INT8)")
         else:
-            h2_inter = explicit_matmul(h, self.W2a, "FFN_2a")
-            out = explicit_matmul(h2_inter, self.W2b, "FFN_2b")
+            out = explicit_matmul(h, self.W2, "FFN_2")
             
         return out.reshape(orig_shape)
 
     def backward(self, dout, x_in):
-        # Full Low-Rank Backward
         if self.quantized:
             raise NotImplementedError("Gradient calc on quantized model not supported")
             
@@ -143,55 +127,37 @@ class FeedForward:
         
         # Recompute Forward
         # 1. W1
-        h1a = np.matmul(x_flat, self.W1a)
-        h = np.matmul(h1a, self.W1b)
-        h_relu = np.maximum(h, 0)
-        
-        # 2. W2
-        # out = RELU(h) @ W2a @ W2b
-        h2a = np.matmul(h_relu, self.W2a)
-        # out = h2a @ W2b
+        h_pre = np.matmul(x_flat, self.W1)
+        h_relu = np.maximum(h_pre, 0)
         
         # Backward Pass
-        # dOut = dout_flat
         
-        # dW2b
-        dW2b = np.matmul(h2a.T, dout_flat)
-        dh2a = np.matmul(dout_flat, self.W2b.T)
-        
-        # dW2a
-        dW2a = np.matmul(h_relu.T, dh2a)
-        dh_relu_pre = np.matmul(dh2a, self.W2a.T)
+        # dW2
+        dW2 = np.matmul(h_relu.T, dout_flat)
+        dh_relu = np.matmul(dout_flat, self.W2.T)
         
         # dReLU
-        dh = dh_relu_pre * (h > 0)
+        dh_pre = dh_relu * (h_pre > 0)
         
-        # dW1b
-        dW1b = np.matmul(h1a.T, dh)
-        dh1a = np.matmul(dh, self.W1b.T)
+        # dW1
+        dW1 = np.matmul(x_flat.T, dh_pre)
+        dx_flat = np.matmul(dh_pre, self.W1.T)
         
-        # dW1a
-        dW1a = np.matmul(x_flat.T, dh1a)
-        dx_flat = np.matmul(dh1a, self.W1a.T)
-        
-        return dx_flat.reshape(orig_shape), (dW1a, dW1b, dW2a, dW2b)
+        return dx_flat.reshape(orig_shape), (dW1, dW2)
 
     def apply_grads(self, grads, lr=1e-3, optimizer=None):
-        dW1a, dW1b, dW2a, dW2b = grads
+        dW1, dW2 = grads
         if optimizer:
-            optimizer.step([self.W1a, self.W1b, self.W2a, self.W2b], 
-                           [dW1a, dW1b, dW2a, dW2b])
+            optimizer.step([self.W1, self.W2], [dW1, dW2])
         else:
-            self.W1a -= lr * dW1a
-            self.W1b -= lr * dW1b
-            self.W2a -= lr * dW2a
-            self.W2b -= lr * dW2b
+            self.W1 -= lr * dW1
+            self.W2 -= lr * dW2
 
 class TransformerBlock:
-    def __init__(self, d_model, n_heads, d_ff, ffn_rank=32):
+    def __init__(self, d_model, n_heads, d_ff, n_kv_heads=None, ffn_rank=32):
         from .attention import MultiHeadAttention
         self.ln1 = RMSNorm(d_model)
-        self.attn = MultiHeadAttention(d_model, n_heads)
+        self.attn = MultiHeadAttention(d_model, n_heads, n_kv_heads=n_kv_heads)
         self.ln2 = RMSNorm(d_model)
         self.ffn = FeedForward(d_model, d_ff, rank=ffn_rank)
         
@@ -255,20 +221,23 @@ class TransformerBlock:
         self.attn.quantize()
 
 class MiniTransformer:
-    def __init__(self, vocab_size, d_model=240, n_heads=4, max_len=128, n_layers=2):
+    def __init__(self, vocab_size, d_model=240, n_heads=4, n_kv_heads=2, max_len=128, n_layers=2):
         self.d_model = d_model
         self.n_layers = n_layers
+        self.n_heads = n_heads 
+        self.n_kv_heads = n_kv_heads
         
         from .embeddings import EmbeddingLayer
         from .kv_cache import KVCache
         
         self.embeddings = EmbeddingLayer(vocab_size, d_model, max_len)
-        self.kv_cache = KVCache(max_len, n_heads, d_model // n_heads, n_layers) 
+        self.kv_cache = KVCache(max_len, n_kv_heads, d_model // n_heads, n_layers) 
         # Note: KVCache needs to support n_layers now!
         
         self.layers = []
         for _ in range(n_layers):
-            self.layers.append(TransformerBlock(d_model, n_heads, d_model * 4, ffn_rank=32))
+            # FFN: 2.5x expansion instead of 4x (better for small data, prevents memorization)
+            self.layers.append(TransformerBlock(d_model, n_heads, int(d_model * 2.5), n_kv_heads=n_kv_heads, ffn_rank=32))
             
         self.ln_f = RMSNorm(d_model)
         

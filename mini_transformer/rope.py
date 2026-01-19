@@ -1,6 +1,6 @@
 import numpy as np
 
-def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
+def precompute_freqs_cis(dim: int, end: int, theta: float = 500000.0):
     """
     Precompute the frequency tensor for complex exponentials (cis) with given dimensions.
     """

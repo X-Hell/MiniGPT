@@ -196,3 +196,68 @@ def plot_inference_timeline(stats, save_path="inference_timeline.png"):
     plt.savefig(save_path)
     plt.close()
     print(f"[Viz] Saved timeline to {save_path}")
+
+def plot_logprobs(logprobs, tokens=None, save_path="logprobs.png"):
+    """
+    Plots per-token log probabilities to diagnose generation quality.
+    logprobs: list of float (log prob of each generated token)
+    tokens: optional list of token strings for x-axis labels
+    """
+    plt.figure(figsize=(12, 4))
+    x = range(len(logprobs))
+    plt.plot(x, logprobs, marker='o', linestyle='-', color='steelblue', linewidth=1.5, markersize=4)
+    plt.axhline(y=-2.0, color='orange', linestyle='--', label='Warning threshold (-2.0)')
+    plt.axhline(y=-4.0, color='red', linestyle='--', label='Critical threshold (-4.0)')
+    
+    plt.fill_between(x, logprobs, -10, where=np.array(logprobs) < -4.0, 
+                     color='red', alpha=0.3, label='Low confidence')
+    
+    plt.xlabel("Token Position")
+    plt.ylabel("Log Probability")
+    plt.title("Per-Token Log Probabilities (Generation Quality)")
+    plt.legend(loc='lower left')
+    plt.grid(True, alpha=0.3)
+    plt.ylim(bottom=-10, top=0)
+    
+    if tokens and len(tokens) <= 40:
+        plt.xticks(x, tokens, rotation=45, ha='right', fontsize=8)
+    
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+    print(f"[Viz] Saved logprobs plot to {save_path}")
+
+def plot_head_contribution(attn_weights, save_path="head_contribution.png"):
+    """
+    Bar chart showing which attention heads contribute most to final attention.
+    attn_weights: (1, n_heads, T, T)
+    """
+    n_heads = attn_weights.shape[1]
+    
+    # Compute average attention magnitude per head
+    avg_attn = np.mean(attn_weights[0], axis=(1, 2)) # (H,)
+    
+    # Compute attention variance per head (higher = more specialized)
+    var_attn = np.var(attn_weights[0].reshape(n_heads, -1), axis=1)
+    
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    
+    # Average attention
+    axes[0].bar(range(n_heads), avg_attn, color='teal')
+    axes[0].set_xlabel("Head Index")
+    axes[0].set_ylabel("Average Attention")
+    axes[0].set_title("Head Activity (Average)")
+    axes[0].set_xticks(range(n_heads))
+    
+    # Variance (specialization)
+    axes[1].bar(range(n_heads), var_attn, color='coral')
+    axes[1].set_xlabel("Head Index")
+    axes[1].set_ylabel("Attention Variance")
+    axes[1].set_title("Head Specialization (Variance)")
+    axes[1].set_xticks(range(n_heads))
+    
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+    print(f"[Viz] Saved head contribution to {save_path}")
+

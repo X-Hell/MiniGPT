@@ -7,15 +7,16 @@ import time
 # Ensure we can import modules
 sys.path.append(os.getcwd())
 
-from mini_transformer.tokenizer import MiniTokenizer, TokenizerConfig
+from mini_transformer.tokenizer import BPETokenizer, TokenizerConfig
 from mini_transformer.transformer import MiniTransformer
 from mini_transformer.matmul import explicit_matmul, _LOGGER
 from mini_transformer.optimizer import AdamW
 
-def cross_entropy_loss(logits, targets):
+def cross_entropy_loss(logits, targets, label_smoothing=0.1):
     """
     logits: (B, T, Vocab)
     targets: (B, T) - ints
+    label_smoothing: float, smooths target distribution to reduce overconfidence
     Returns: scalar loss, dLogits
     """
     B, T, V = logits.shape
@@ -29,21 +30,35 @@ def cross_entropy_loss(logits, targets):
     exp_logits = np.exp(logits_flat - max_logits)
     probs = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
     
-    # Loss
+    # Label smoothing: target becomes (1 - ε) at correct class, ε/(V-1) elsewhere
     N = logits_flat.shape[0]
-    relevant_probs = probs[np.arange(N), targets_flat]
-    log_probs = -np.log(relevant_probs + 1e-9)
-    loss = np.mean(log_probs)
     
-    # Gradient: P - 1 (at target)
-    dlogits = probs.copy()
-    dlogits[np.arange(N), targets_flat] -= 1
-    dlogits /= N # Mean reduction
+    if label_smoothing > 0:
+        # Smoothed target distribution
+        smooth_targets = np.full((N, V), label_smoothing / (V - 1), dtype=np.float32)
+        smooth_targets[np.arange(N), targets_flat] = 1.0 - label_smoothing
+        
+        # Cross entropy with smoothed targets: -sum(target * log(prob))
+        log_probs_all = np.log(probs + 1e-9)
+        loss = -np.sum(smooth_targets * log_probs_all) / N
+        
+        # Gradient: P - smooth_target
+        dlogits = (probs - smooth_targets) / N
+    else:
+        # Standard hard targets
+        relevant_probs = probs[np.arange(N), targets_flat]
+        log_probs = -np.log(relevant_probs + 1e-9)
+        loss = np.mean(log_probs)
+        
+        # Gradient: P - 1 (at target)
+        dlogits = probs.copy()
+        dlogits[np.arange(N), targets_flat] -= 1
+        dlogits /= N
     
     return loss, dlogits.reshape(B, T, V)
 
 def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=5e-4):
-    print("=== Mini Transformer Training ===")
+    print("=== Mini Transformer Training (BPE + GQA) ===")
     
     # Config
     B = 1
@@ -60,18 +75,28 @@ def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=5e-4)
     with open(text_path, "r") as f:
         text = f.read()
         
-    config = TokenizerConfig(vocab_size=256)
-    tokenizer = MiniTokenizer(config)
+    # BPE Tokenizer Setup
+    vocab_size = 300 # Slightly larger than 256 for BPE experiment
+    config = TokenizerConfig(vocab_size=vocab_size) 
+    tokenizer = BPETokenizer(config)
+    
+    if os.path.exists("tokenizer.model"):
+        tokenizer.load("tokenizer.model")
+    else:
+        tokenizer.train(text)
+        tokenizer.save("tokenizer.model")
+        
     tokens = tokenizer.encode(text)
     tokens = np.array(tokens)
     print(f"Dataset: {len(tokens)} tokens")
     
     # Init Model
     model = MiniTransformer(
-        vocab_size=256,
+        vocab_size=vocab_size,
         d_model=240,
         n_heads=4,
-        max_len=128, # Must covers T
+        n_kv_heads=2, # GQA (4Q, 2KV) -> 2x compression
+        max_len=128, 
         n_layers=2
     )
     
@@ -125,11 +150,11 @@ def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=5e-4)
         
         for l_grads in layer_grads:
             ffn_grads, attn_grads = l_grads
-            dW1a, dW1b, dW2a, dW2b = ffn_grads
-            # attn_grads is now (dW_qkv, dW_o) due to fusion
+            dW1, dW2 = ffn_grads
+            # attn_grads is (dW_qkv, dW_o) for Fused GQA
             dW_qkv, dW_o = attn_grads
             
-            sq_sum += np.sum(dW1a**2) + np.sum(dW1b**2) + np.sum(dW2a**2) + np.sum(dW2b**2)
+            sq_sum += np.sum(dW1**2) + np.sum(dW2**2)
             sq_sum += np.sum(dW_qkv**2) + np.sum(dW_o**2)
             
         grad_norm = np.sqrt(sq_sum)

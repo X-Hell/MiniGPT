@@ -3,6 +3,7 @@ import sys
 import os
 import pickle
 import time
+import math
 
 # Ensure we can import modules
 sys.path.append(os.getcwd())
@@ -57,7 +58,7 @@ def cross_entropy_loss(logits, targets, label_smoothing=0.1):
     
     return loss, dlogits.reshape(B, T, V)
 
-def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=5e-4):
+def train_loop(text_path="data/train_data.txt", steps=2000, lr=5e-4):
     print("=== Mini Transformer Training (BPE + GQA) ===")
     
     # Config
@@ -76,32 +77,51 @@ def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=5e-4)
         text = f.read()
         
     # BPE Tokenizer Setup
-    vocab_size = 300 # Slightly larger than 256 for BPE experiment
+    vocab_size = 2048  # Balanced vocab for word-level tokenization
     config = TokenizerConfig(vocab_size=vocab_size) 
     tokenizer = BPETokenizer(config)
     
-    if os.path.exists("tokenizer.model"):
-        tokenizer.load("tokenizer.model")
+    if os.path.exists("models/tokenizer.model"):
+        tokenizer.load("models/tokenizer.model")
     else:
         tokenizer.train(text)
-        tokenizer.save("tokenizer.model")
+        tokenizer.save("models/tokenizer.model")
         
     tokens = tokenizer.encode(text)
     tokens = np.array(tokens)
     print(f"Dataset: {len(tokens)} tokens")
     
-    # Init Model
+    # Init Model (NanoGPT Scale)
     model = MiniTransformer(
         vocab_size=vocab_size,
-        d_model=240,
-        n_heads=4,
-        n_kv_heads=2, # GQA (4Q, 2KV) -> 2x compression
-        max_len=128, 
-        n_layers=2
+        d_model=384,      # Increased from 240
+        n_heads=6,        # Increased from 4 (64 dim/head standard)
+        n_kv_heads=3,     # GQA (6Q, 3KV) -> 2x compression
+        max_len=256, 
+        n_layers=6        # Increased from 2
     )
     
     # Optimizer
-    optimizer = AdamW(lr=lr, betas=(0.9, 0.95), weight_decay=0.01)
+    # LR Scheduler Settings
+    max_lr = 5e-4
+    min_lr = 5e-5
+    warmup_iters = 100
+    
+    optimizer = AdamW(lr=max_lr, betas=(0.9, 0.95), weight_decay=0.02)
+    
+    def get_lr(it):
+        # 1. Linear Warmup
+        if it < warmup_iters:
+            return max_lr * it / warmup_iters
+        # 2. If finished, return min_lr
+        if it > steps:
+            return min_lr
+        # 3. Cosine Decay
+        decay_ratio = (it - warmup_iters) / (steps - warmup_iters)
+        assert 0 <= decay_ratio <= 1
+        coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
+        return min_lr + coeff * (max_lr - min_lr)
+
     
     # 3. Loop
     losses = []
@@ -111,14 +131,7 @@ def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=5e-4)
     
     for step in range(steps):
         # LR Schedule: Warmup + Cosine
-        lr_now = lr 
-        if step < 200: # Warmup
-             lr_now = lr * (step / 200)
-        else:
-             progress = (step - 200) / (steps - 200)
-             lr_now = 0.5 * lr * (1 + np.cos(np.pi * progress))
-             
-        # Update optimizer LR
+        lr_now = get_lr(step)
         optimizer.lr = lr_now
              
         # Curriculum
@@ -137,6 +150,11 @@ def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=5e-4)
         # Forward
         logits, _ = model.forward(x)
         
+
+        
+        # Forward
+        logits, _ = model.forward(x, start_pos=0)
+        
         # Loss
         loss, dlogits = cross_entropy_loss(logits, y)
         
@@ -150,11 +168,13 @@ def train_loop(text_path="mini_transformer/train_data.txt", steps=2000, lr=5e-4)
         
         for l_grads in layer_grads:
             ffn_grads, attn_grads = l_grads
-            dW1, dW2 = ffn_grads
+            # SwiGLU: ffn_grads is (dW_gate, dW_up, dW_down) - 3 matrices
+            # Old FFN: ffn_grads was (dW1, dW2) - 2 matrices
+            for g in ffn_grads:
+                sq_sum += np.sum(g**2)
             # attn_grads is (dW_qkv, dW_o) for Fused GQA
             dW_qkv, dW_o = attn_grads
             
-            sq_sum += np.sum(dW1**2) + np.sum(dW2**2)
             sq_sum += np.sum(dW_qkv**2) + np.sum(dW_o**2)
             
         grad_norm = np.sqrt(sq_sum)

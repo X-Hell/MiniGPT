@@ -18,85 +18,64 @@ class KVCache:
         self.window_size = window_size
         self.keep_recent = keep_recent
         
-        # FP16 storage for recent tokens
+        # Pre-allocate full buffer (Ring Buffer)
+        # static size = max_len
         self.k_cache = np.zeros((n_layers, 1, n_heads, max_len, d_head), dtype=np.float16)
         self.v_cache = np.zeros((n_layers, 1, n_heads, max_len, d_head), dtype=np.float16)
-        
-        # INT8 storage for old tokens (with scales)
-        self.k_old_int8 = None
-        self.v_old_int8 = None
-        self.k_scales = None
-        self.v_scales = None
-        self.old_len = 0
         
         self.current_len = 0
         
         mem_usage = self.k_cache.nbytes + self.v_cache.nbytes
-        print(f"[KVCache] FP16 + INT8 eviction (window={window_size}, recent={keep_recent}). Mem: {mem_usage/1024:.2f} KB")
+        print(f"[KVCache] Static Ring Buffer (max_len={max_len}, window={window_size}). Mem: {mem_usage/1024:.2f} KB")
 
     def update(self, new_k, new_v, start_pos, layer_idx):
         """
-        new_k, new_v: (1, n_heads, T, d_head) in FP32
-        start_pos: integer index to write to
-        layer_idx: which layer to update
+        Write new tokens to Ring Buffer.
+        Returns contiguous view of last `window_size` tokens.
         """
         T = new_k.shape[2]
         
-        # Apply sliding window if exceeding capacity
-        if start_pos + T > self.max_len:
-            # Before sliding, compress oldest tokens to INT8
-            self._compress_old_tokens(layer_idx)
+        # Ring Buffer Write
+        # We can write in chunks if wrapping around
+        for t in range(T):
+            pos = (start_pos + t) % self.max_len
+            self.k_cache[layer_idx, :, :, pos:pos+1, :] = new_k[:, :, t:t+1, :].astype(np.float16)
+            self.v_cache[layer_idx, :, :, pos:pos+1, :] = new_v[:, :, t:t+1, :].astype(np.float16)
             
-            # Slide: shift old content left
-            shift = (start_pos + T) - self.max_len
-            self.k_cache[layer_idx, :, :, :-shift, :] = self.k_cache[layer_idx, :, :, shift:, :]
-            self.v_cache[layer_idx, :, :, :-shift, :] = self.v_cache[layer_idx, :, :, shift:, :]
-            start_pos = self.max_len - T
-            self.current_len = start_pos
-        
-        # Store as FP16
-        self.k_cache[layer_idx, :, :, start_pos : start_pos + T, :] = new_k.astype(np.float16)
-        self.v_cache[layer_idx, :, :, start_pos : start_pos + T, :] = new_v.astype(np.float16)
-        
         if layer_idx == 0:
-            if start_pos + T > self.current_len:
-                self.current_len = start_pos + T
+            self.current_len = max(self.current_len, start_pos + T)
         
-        # Return windowed view (last window_size tokens for attention)
-        window_start = max(0, self.current_len - self.window_size)
+        # Construct Contiguous View for Attention
+        # We need the last `window_size` tokens ending at `start_pos + T`
+        end_idx = start_pos + T
         
-        k_out = self.k_cache[layer_idx, :, :, window_start:self.current_len, :].astype(np.float32)
-        v_out = self.v_cache[layer_idx, :, :, window_start:self.current_len, :].astype(np.float32)
-        
+        # Calculate range
+        if end_idx <= self.window_size:
+             # Case 1: Early in sequence, just key from 0 to end
+             view_start = 0
+             view_end = end_idx
+             # Indices in buffer are 0..end_idx (no wrap)
+             k_out = self.k_cache[layer_idx, :, :, 0:end_idx, :].astype(np.float32)
+             v_out = self.v_cache[layer_idx, :, :, 0:end_idx, :].astype(np.float32)
+        else:
+             # Case 2: Standard, take last window_size
+             # Indices might wrap!
+             # example: max=10, window=4, current=12 (wraps to 2)
+             # we want virtual indices 8, 9, 10, 11 -> map to buffer 8, 9, 0, 1
+             
+             # Simpler approach: construct return array
+             k_out = np.zeros((1, self.n_heads, self.window_size, self.d_head), dtype=np.float32)
+             v_out = np.zeros((1, self.n_heads, self.window_size, self.d_head), dtype=np.float32)
+             
+             for i in range(self.window_size):
+                 virtual_pos = end_idx - self.window_size + i
+                 buffer_pos = virtual_pos % self.max_len
+                 k_out[:, :, i, :] = self.k_cache[layer_idx, :, :, buffer_pos, :].astype(np.float32)
+                 v_out[:, :, i, :] = self.v_cache[layer_idx, :, :, buffer_pos, :].astype(np.float32)
+                 
         return (k_out, v_out)
     
-    def _compress_old_tokens(self, layer_idx):
-        """Compress tokens beyond keep_recent to INT8."""
-        if self.current_len <= self.keep_recent:
-            return
-        
-        compress_end = self.current_len - self.keep_recent
-        
-        if compress_end <= 0:
-            return
-        
-        # Extract old tokens
-        k_old = self.k_cache[layer_idx, :, :, :compress_end, :]
-        v_old = self.v_cache[layer_idx, :, :, :compress_end, :]
-        
-        # Quantize to INT8
-        k_scale = np.abs(k_old).max(axis=-1, keepdims=True) / 127.0 + 1e-9
-        v_scale = np.abs(v_old).max(axis=-1, keepdims=True) / 127.0 + 1e-9
-        
-        k_int8 = np.clip(np.round(k_old / k_scale), -127, 127).astype(np.int8)
-        v_int8 = np.clip(np.round(v_old / v_scale), -127, 127).astype(np.int8)
-        
-        # Store compressed (for potential retrieval)
-        self.k_old_int8 = k_int8
-        self.v_old_int8 = v_int8
-        self.k_scales = k_scale
-        self.v_scales = v_scale
-        self.old_len = compress_end
+    # _compress_old_tokens removed (deprecated)
     
     def get_full_context(self, layer_idx) -> tuple:
         """

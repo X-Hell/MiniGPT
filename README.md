@@ -16,6 +16,13 @@
 
 </div>
 
+## 🧠 Roadmap to Cognitive AI
+**Goal:** Self-Aware Embodied Intelligence  
+**Status:** Phase 20/50 (Foundation Model Complete)  
+`[████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 40%`
+
+---
+
 ## 📈 Project Evolution (Phases 1-15)
 
 This project was built in **15 distinct phases**, mirroring the real-world optimization pipeline of modern LLMs. Below is comprehensive data on how each architectural decision impacted quality, latency, and memory.
@@ -56,9 +63,14 @@ This project was built in **15 distinct phases**, mirroring the real-world optim
 | 12 | -3.42 | 1.25 | 11.5 | 2457 | 459 | Label Smoothing + INT8 KV |
 | 13 | -2.85 | 1.12 | 9.8 | 1843 | 408 | FFN 2.5x + Entropy Decode |
 | 14 | -2.62 | 1.05 | 8.5 | 1843 | 408 | Cognitive Controller |
-| **15** | **-2.44** | **0.98** | **7.2** | **1843** | **408** | **QAT + LoRA + KV Eviction** |
+| 15 | -2.44 | 0.98 | 7.2 | 1843 | 408 | QAT + LoRA + KV Eviction |
+| 16 | -2.44 | 0.96 | 8.1 | 1843 | 408 | SwiGLU + Logit Lens + Min-P |
+| 17 | -2.38 | 0.95 | 9.2 | 2560 | 408 | Vocab 1024 + RoPE |
+| 18 | -0.61 | 0.42 | 9.5 | 3200 | 408 | Vocab 2048 + Weight Decay |
+| 19 | -0.63 | 0.41 | 7.5 | 240 | 408 | Static KV Ring Buffer + 256 ctx |
+| **20** | **-0.34** | **0.28** | **15.2** | **1152** | **1581** | **NanoGPT (6L/384D) + Cosine LR** |
 
-> **Summary**: LogProb improved from **-5.20 → -2.44** (+53%), Latency reduced **55ms → 7.2ms** (-87%), MatMul ops cut **1530 → 408** (-73%)
+> **Summary**: LogProb improved from **-5.20 → -0.34** (+93%), Latency ~15ms (Deep Model), MatMul ops scaled for intelligence.
 
 ---
 
@@ -98,6 +110,11 @@ The Elsoro Mini kernel architecture is designed for **humanoid RL** and **self-a
 | **13** | `Deep Optimization` | **~1.4M** | **~1.8 MB** | 🚀 FFN 2.5x, FP16 KV+Sliding Window, Entropy-Aware Decoding, Early-Exit. |
 | **14** | `Cognitive Robotics` | ~1.4M | ~1.8 MB | 🤖 **Meta-Controller**: Entropy gating, head disagreement, intention pipeline. |
 | **15** | `Production Optimization` | ~1.4M | ~1.8 MB | ⚡ **QAT**, **LoRA** (95% param reduction), INT8 KV eviction, benchmarking. |
+| **16** | `Modern Arch` | ~1.5M | ~1.9 MB | **SwiGLU** FFN (SiLU), Logit Lens, Min-P Sampling. |
+| **17** | `Vocab Expansion` | ~1.8M | ~2.5 MB | **RoPE** (Rotary Embeddings), Vocab 1024. |
+| **18** | `Stability` | ~2.1M | ~3.2 MB | Vocab 2048, Weight Decay 0.02. |
+| **19** | `Performance` | ~2.1M | **~0.2 MB** | 🚀 **Static Ring Buffer** (Zero Copy), Context 256, Dynamic Temp. |
+| **20** | `NanoGPT Scale` | **~10.8M** | ~5.5 MB | 🧠 **6 Layers, 384 Dim**. "Mega-Token" Fix, Cosine Scheduler. Loss: 2.95. |
 
 
 ---
@@ -113,6 +130,7 @@ Phase 4   ████████████████████       5.3
 Phase 6   ████████████               3.1 MB
 Phase 8   █████████                  2.0 MB
 Phase 10  █████████                  2.0 MB
+Phase 20  ██████████████████████     5.5 MB (6 Layers)
 ```
 
 ### ⚡ Inference Performance (CPU)

@@ -54,43 +54,67 @@ class RMSNorm:
             self.gamma -= lr * self.d_gamma
 
 class FeedForward:
+    """
+    SwiGLU Feed-Forward Network (Llama/Mistral standard)
+    
+    FFN(x) = (SiLU(x @ W_gate) ⊙ (x @ W_up)) @ W_down
+    
+    SiLU(x) = x * sigmoid(x)
+    """
     def __init__(self, d_model, d_ff, rank=None):
-        # Ignore rank argument to maintain signature compatibility but do standard FFN
+        # Ignore rank argument to maintain signature compatibility
         self.d_model = d_model
-        self.d_ff = d_ff
+        # Reduce hidden dim to keep params ~constant with 3 matrices
+        # Original: 2 * d_model * d_ff = 2 * 240 * 600 = 288K
+        # SwiGLU: 3 * d_model * d_ff_new, solve for d_ff_new ≈ 512
+        self.d_ff = int(d_ff * 2 / 3)  # 600 * 2/3 = 400, but we use 512 for power-of-2
+        self.d_ff = max(256, min(512, self.d_ff))  # Clamp to [256, 512]
         
-        # Standard FFN: Expansion -> Activation -> Projection
-        # W1: (D, D_ff)
-        # W2: (D_ff, D)
+        # SwiGLU: three matrices
+        scale = 1.0 / np.sqrt(d_model)
+        self.W_gate = np.random.normal(scale=scale, size=(d_model, self.d_ff)).astype(np.float32)
+        self.W_up = np.random.normal(scale=scale, size=(d_model, self.d_ff)).astype(np.float32)
         
-        scale_1 = 1.0 / np.sqrt(d_model)
-        self.W1 = np.random.normal(scale=scale_1, size=(d_model, d_ff)).astype(np.float32)
-        
-        scale_2 = 1.0 / np.sqrt(d_ff)
-        self.W2 = np.random.normal(scale=scale_2, size=(d_ff, d_model)).astype(np.float32)
+        scale_down = 1.0 / np.sqrt(self.d_ff)
+        self.W_down = np.random.normal(scale=scale_down, size=(self.d_ff, d_model)).astype(np.float32)
         
         self.quantized = False
-        mem = (self.W1.nbytes + self.W2.nbytes)
-        print(f"[FFN] Standard ({d_model}->{d_ff}->{d_model}) Weights Mem: {mem/1024:.2f} KB")
+        mem = (self.W_gate.nbytes + self.W_up.nbytes + self.W_down.nbytes)
+        print(f"[FFN] SwiGLU ({d_model}->gate/up:{self.d_ff}->down:{d_model}) Weights Mem: {mem/1024:.2f} KB")
+    
+    @staticmethod
+    def silu(x):
+        """SiLU/Swish activation: x * sigmoid(x)"""
+        return x * (1.0 / (1.0 + np.exp(-np.clip(x, -88, 88))))
+    
+    @staticmethod
+    def silu_backward(x, grad_out):
+        """
+        d/dx[SiLU(x)] = sigmoid(x) + x * sigmoid(x) * (1 - sigmoid(x))
+                      = sigmoid(x) * (1 + x * (1 - sigmoid(x)))
+        """
+        sig = 1.0 / (1.0 + np.exp(-np.clip(x, -88, 88)))
+        return grad_out * (sig + x * sig * (1 - sig))
     
     def quantize(self):
         """Quantizes weights to INT8."""
         if self.quantized:
             return
             
-        print(f"[FFN] Quantizing Standard matrices to INT8...")
+        print(f"[FFN] Quantizing SwiGLU matrices to INT8...")
         
         from .quant_utils import quantize_matrix
         
-        self.W1_int8, self.w1_scale = quantize_matrix(self.W1)
-        self.W2_int8, self.w2_scale = quantize_matrix(self.W2)
+        self.W_gate_int8, self.gate_scale = quantize_matrix(self.W_gate)
+        self.W_up_int8, self.up_scale = quantize_matrix(self.W_up)
+        self.W_down_int8, self.down_scale = quantize_matrix(self.W_down)
         
         # Release float weights
-        del self.W1, self.W2
+        del self.W_gate, self.W_up, self.W_down
         self.quantized = True
         
-        mem_new = (self.W1_int8.nbytes + self.W2_int8.nbytes +
-                   self.w1_scale.nbytes + self.w2_scale.nbytes)
+        mem_new = (self.W_gate_int8.nbytes + self.W_up_int8.nbytes + self.W_down_int8.nbytes +
+                   self.gate_scale.nbytes + self.up_scale.nbytes + self.down_scale.nbytes)
                    
         print(f"[FFN] Quantized Mem: {mem_new/1024:.2f} KB")
 
@@ -100,20 +124,22 @@ class FeedForward:
         x_flat = x.reshape(-1, orig_shape[-1])
         
         if self.quantized:
-            # Dequantize on fly
-            W1 = self.W1_int8.astype(np.float32) * self.w1_scale
-            h = explicit_matmul(x_flat, W1, "FFN_1 (INT8)")
+            W_gate = self.W_gate_int8.astype(np.float32) * self.gate_scale
+            W_up = self.W_up_int8.astype(np.float32) * self.up_scale
+            W_down = self.W_down_int8.astype(np.float32) * self.down_scale
         else:
-            h = explicit_matmul(x_flat, self.W1, "FFN_1")
-            
-        # ReLU (In-place)
-        np.maximum(h, 0, out=h)
+            W_gate, W_up, W_down = self.W_gate, self.W_up, self.W_down
         
-        if self.quantized:
-            W2 = self.W2_int8.astype(np.float32) * self.w2_scale
-            out = explicit_matmul(h, W2, "FFN_2 (INT8)")
-        else:
-            out = explicit_matmul(h, self.W2, "FFN_2")
+        # SwiGLU: (SiLU(x @ W_gate) ⊙ (x @ W_up)) @ W_down
+        gate_pre = explicit_matmul(x_flat, W_gate, "FFN_Gate")
+        gate_out = self.silu(gate_pre)
+        
+        up_out = explicit_matmul(x_flat, W_up, "FFN_Up")
+        
+        # Element-wise gating
+        hidden = gate_out * up_out
+        
+        out = explicit_matmul(hidden, W_down, "FFN_Down")
             
         return out.reshape(orig_shape)
 
@@ -125,33 +151,46 @@ class FeedForward:
         x_flat = x_in.reshape(-1, orig_shape[-1])
         dout_flat = dout.reshape(-1, orig_shape[-1])
         
-        # Recompute Forward
-        # 1. W1
-        h_pre = np.matmul(x_flat, self.W1)
-        h_relu = np.maximum(h_pre, 0)
+        # Recompute Forward for gradient
+        gate_pre = np.matmul(x_flat, self.W_gate)
+        gate_out = self.silu(gate_pre)
+        up_out = np.matmul(x_flat, self.W_up)
+        hidden = gate_out * up_out
         
         # Backward Pass
         
-        # dW2
-        dW2 = np.matmul(h_relu.T, dout_flat)
-        dh_relu = np.matmul(dout_flat, self.W2.T)
+        # d_W_down: hidden^T @ dout
+        dW_down = np.matmul(hidden.T, dout_flat)
         
-        # dReLU
-        dh_pre = dh_relu * (h_pre > 0)
+        # d_hidden: dout @ W_down^T
+        d_hidden = np.matmul(dout_flat, self.W_down.T)
         
-        # dW1
-        dW1 = np.matmul(x_flat.T, dh_pre)
-        dx_flat = np.matmul(dh_pre, self.W1.T)
+        # d_gate_out = d_hidden ⊙ up_out
+        d_gate_out = d_hidden * up_out
         
-        return dx_flat.reshape(orig_shape), (dW1, dW2)
+        # d_up_out = d_hidden ⊙ gate_out
+        d_up_out = d_hidden * gate_out
+        
+        # d_gate_pre = SiLU backward
+        d_gate_pre = self.silu_backward(gate_pre, d_gate_out)
+        
+        # dW_gate, dW_up
+        dW_gate = np.matmul(x_flat.T, d_gate_pre)
+        dW_up = np.matmul(x_flat.T, d_up_out)
+        
+        # dx
+        dx_flat = np.matmul(d_gate_pre, self.W_gate.T) + np.matmul(d_up_out, self.W_up.T)
+        
+        return dx_flat.reshape(orig_shape), (dW_gate, dW_up, dW_down)
 
     def apply_grads(self, grads, lr=1e-3, optimizer=None):
-        dW1, dW2 = grads
+        dW_gate, dW_up, dW_down = grads
         if optimizer:
-            optimizer.step([self.W1, self.W2], [dW1, dW2])
+            optimizer.step([self.W_gate, self.W_up, self.W_down], [dW_gate, dW_up, dW_down])
         else:
-            self.W1 -= lr * dW1
-            self.W2 -= lr * dW2
+            self.W_gate -= lr * dW_gate
+            self.W_up -= lr * dW_up
+            self.W_down -= lr * dW_down
 
 class TransformerBlock:
     def __init__(self, d_model, n_heads, d_ff, n_kv_heads=None, ffn_rank=32):
@@ -221,7 +260,7 @@ class TransformerBlock:
         self.attn.quantize()
 
 class MiniTransformer:
-    def __init__(self, vocab_size, d_model=240, n_heads=4, n_kv_heads=2, max_len=128, n_layers=2):
+    def __init__(self, vocab_size, d_model=240, n_heads=4, n_kv_heads=2, max_len=256, n_layers=2):
         self.d_model = d_model
         self.n_layers = n_layers
         self.n_heads = n_heads 
@@ -243,7 +282,7 @@ class MiniTransformer:
         
         print(f"[Transformer] Initialized {n_layers} layers (Weight Tying Enabled).")
 
-    def forward(self, token_ids, start_pos=0, targets=None):
+    def forward(self, token_ids, start_pos=0, targets=None, return_intermediates=False):
         if len(token_ids.shape) == 1:
             token_ids = token_ids[np.newaxis, :]
             
@@ -259,9 +298,13 @@ class MiniTransformer:
         
         # Layers
         all_attn_weights = []
+        intermediate_states = [x.copy()] if return_intermediates else None
+        
         for i, layer in enumerate(self.layers):
             x, attn_w = layer.forward(x, self.kv_cache, start_pos, layer_idx=i)
             all_attn_weights.append(attn_w)
+            if return_intermediates:
+                intermediate_states.append(x.copy())
             
         # Final Norm
         x_final = self.ln_f.forward(x)
@@ -276,7 +319,38 @@ class MiniTransformer:
         # Run inference expects (B, H, T, T). We can return list or just last.
         # For compatibility with visualize.py, let's return the last one for now or stack.
         # visualize.py plots one set.
+        if return_intermediates:
+            return logits, all_attn_weights[-1], intermediate_states
         return logits, all_attn_weights[-1] # Return last layer attention
+    
+    def logit_lens(self, hidden_states, position=-1):
+        """
+        Apply output projection to each layer's hidden state.
+        
+        This is a powerful interpretability tool that shows what the model
+        would predict at each layer, revealing how the prediction evolves.
+        
+        Args:
+            hidden_states: List of hidden states from forward_with_intermediates
+            position: Token position to analyze (-1 for last token)
+            
+        Returns:
+            List of (layer_idx, logits) tuples
+        """
+        results = []
+        for layer_idx, h in enumerate(hidden_states):
+            # Apply final layer norm
+            h_norm = self.ln_f.forward(h)
+            
+            # Get hidden state at specified position
+            h_pos = h_norm[0, position, :]  # (D,)
+            
+            # Project to vocabulary (tied weights)
+            logits = np.dot(h_pos, self.embeddings.W_emb.T)  # (V,)
+            
+            results.append((layer_idx, logits))
+        
+        return results
 
     def backward(self, dlogits):
         B, T, V = dlogits.shape

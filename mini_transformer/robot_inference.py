@@ -333,16 +333,16 @@ def demo():
     print("=== Robot Inference Kernel Demo ===\n")
     
     # Load tokenizer
-    if not os.path.exists("tokenizer.model"):
-        print("[Error] Tokenizer not found. Run train.py first.")
+    if not os.path.exists("models/tokenizer.model"):
+        print("[Error] models/tokenizer.model not found. Run train.py first.")
         return
     
-    config = TokenizerConfig(vocab_size=300)
+    config = TokenizerConfig(vocab_size=2048)
     tokenizer = BPETokenizer(config)
-    tokenizer.load("tokenizer.model")
+    tokenizer.load("models/tokenizer.model")
     
     # Load model
-    model_path = "mini_transformer_model.pkl"
+    model_path = "models/mini_transformer_model.pkl"
     if not os.path.exists(model_path):
         print("[Error] Model not found. Run train.py first.")
         return
@@ -352,7 +352,7 @@ def demo():
     
     # Reset KV cache
     from mini_transformer.kv_cache import KVCache
-    model.kv_cache = KVCache(128, model.n_kv_heads, model.d_model // model.n_heads, model.n_layers)
+    model.kv_cache = KVCache(256, model.n_kv_heads, model.d_model // model.n_heads, model.n_layers)
     
     # Create kernel
     kernel = RobotInferenceKernel(model, tokenizer)

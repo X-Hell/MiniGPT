@@ -10,11 +10,17 @@ from mini_transformer.transformer import MiniTransformer
 from mini_transformer.matmul import get_stats
 from mini_transformer.visualize import plot_attention, plot_memory_log, plot_entropy, plot_head_similarity, plot_entropy_heatmap
 
-def sample_next_token(logits, temperature=1.0, top_k=40, top_p=0.9, repetition_penalty=1.0, context_tokens=None):
+def sample_next_token(logits, temperature=1.0, top_k=40, top_p=0.9, min_p=0.1, repetition_penalty=1.0, context_tokens=None):
     """
-    Robust sampling: Temp -> RepPenalty -> TopK -> TopP -> Softmax -> Sample
+    Robust sampling: Temp -> RepPenalty -> TopK -> TopP -> MinP -> Softmax -> Sample
+    
+    Min-P: Discard tokens with probability < min_p * max_probability
+    This is more adaptive than Top-P as it adjusts to confidence level.
+    
     logits: (Vocab_Size,)
     """
+    logits = logits.copy()  # Don't modify original
+    
     # 1. Temperature
     logits = logits / (temperature + 1e-9)
 
@@ -61,7 +67,20 @@ def sample_next_token(logits, temperature=1.0, top_k=40, top_p=0.9, repetition_p
         indices_to_remove = sorted_indices[sorted_indices_to_remove]
         logits[indices_to_remove] = -float('Inf')
 
-    # 5. Final Softmax & Sample
+    # 5. Min-P (newer, better alternative to Top-P for low-confidence filtering)
+    if min_p is not None and min_p > 0:
+        # Compute probabilities
+        max_logit = np.max(logits)
+        if max_logit != -float('Inf'):
+            exp_logits = np.exp(logits - max_logit)
+            probs = exp_logits / np.sum(exp_logits)
+            
+            # Min-P threshold: discard tokens with prob < min_p * max_prob
+            p_max = np.max(probs)
+            threshold = min_p * p_max
+            logits[probs < threshold] = -float('Inf')
+
+    # 6. Final Softmax & Sample
     max_val = np.max(logits)
     if max_val == -float('Inf'):
          probs = np.ones_like(logits) / len(logits)
@@ -76,20 +95,20 @@ def main():
     
     # Configuration
     # We load BPE model
-    if not os.path.exists("tokenizer.model"):
-        print("[Error] BPE model 'tokenizer.model' not found. Please run train.py first.")
+    if not os.path.exists("models/tokenizer.model"):
+        print("[Error] BPE model 'models/tokenizer.model' not found. Please run train.py first.")
         return
 
-    config = TokenizerConfig(vocab_size=300) # Match train.py
+    config = TokenizerConfig(vocab_size=2048)  # Match train.py
     tokenizer = BPETokenizer(config)
-    tokenizer.load("tokenizer.model")
+    tokenizer.load("models/tokenizer.model")
     
     # Try to load trained model
     # Prefer quantized
-    if os.path.exists("mini_transformer_model_quantized.pkl"):
-        model_path = "mini_transformer_model_quantized.pkl"
+    if os.path.exists("models/mini_transformer_model_quantized.pkl"):
+        model_path = "models/mini_transformer_model_quantized.pkl"
     else:
-        model_path = "mini_transformer_model.pkl"
+        model_path = "models/mini_transformer_model.pkl"
         
     if os.path.exists(model_path):
         print(f"[Init] Loading trained model from {model_path}...")
@@ -115,15 +134,16 @@ def main():
     else:
         print("[Init] No trained model found. Initializing random weights.")
         model = MiniTransformer(
-            vocab_size=300,
-            d_model=240,
-            n_heads=4,
-            n_kv_heads=2,
-            max_len=128
+            vocab_size=vocab_size, # 2048 from prior edit (will be verified)
+            d_model=384,
+            n_heads=6,
+            n_kv_heads=3,
+            max_len=256,
+            n_layers=6
         )
     
     # Input
-    text = "Hello AI"
+    text = "Once upon a time,"
     print(f"\n[Input] '{text}'")
     
     # Encoding
@@ -132,10 +152,25 @@ def main():
     
     # Inference "prefill" (processing the prompt)
     print("\n--- Phase 1: Prefill (Prompt Processing) ---")
-    logits, attn_weights = model.forward(np.array(tokens), start_pos=0)
+    logits, attn_weights, hidden_states = model.forward(np.array(tokens), start_pos=0, return_intermediates=True)
+    
+    # Logit Lens: See what each layer predicts
+    print("\n📊 Logit Lens (Per-Layer Predictions):")
+    print("-" * 45)
+    lens_results = model.logit_lens(hidden_states)
+    for layer_idx, layer_logits in lens_results:
+        top_k_indices = np.argsort(layer_logits)[-3:][::-1]
+        top_tokens = [tokenizer.decode([idx]) for idx in top_k_indices]
+        top_probs = np.exp(layer_logits[top_k_indices] - np.max(layer_logits))
+        top_probs = top_probs / np.sum(np.exp(layer_logits - np.max(layer_logits)))
+        
+        layer_name = "Embed" if layer_idx == 0 else f"Layer {layer_idx}"
+        tokens_str = ", ".join([f"'{t}' ({p:.1%})" for t, p in zip(top_tokens, top_probs)])
+        print(f"  {layer_name:8} → {tokens_str}")
+    print("-" * 45)
     
     # Decode last token prediction
-    next_token_id, _ = sample_next_token(logits[0, -1], temperature=0.9, top_k=40)
+    next_token_id, _ = sample_next_token(logits[0, -1], temperature=0.9, top_k=40, min_p=0.1)
     
     print(f"[Prediction] Next token ID: {next_token_id}")
     print(f"[Prediction] Next char: '{tokenizer.decode([next_token_id])}'")
@@ -179,18 +214,25 @@ def main():
         log_p_attn = np.log(p_attn + 1e-9)
         entropy = -np.sum(p_attn * log_p_attn, axis=-1).mean()  # Average entropy across heads
         
-        # Entropy-aware temperature/top_k adjustment
-        # High entropy (>2.5) = model uncertain → increase temperature, increase top_k
-        # Low entropy (<1.0) = model confident → lower temperature
+        # Entropy-aware temperature/top_k adjustment (Simplified to Temp Decay for Phase 19)
+        # Decay: Start creative (0.8), focus down (0.6)
+        # temp = max(0.6, 0.8 * (0.99 ** generated_count))
+        
+        # Calculate generated count
+        gen_count = len(generated_ids) - len(tokens)
+        temp_decay = max(0.6, 0.8 * (0.99 ** gen_count))
+        
+        # Use simple logic for now, overriding entropy if valid
+        temp = temp_decay
+        top_k = 40
+        
+        # Keep entropy monitoring but use decay for control
         if entropy > 2.5:
-            temp = 1.0
-            top_k = 50
+             # If EXTREMELY uncertain, maybe boost temp slightly back up?
+             pass 
         elif entropy < 1.0:
-            temp = 0.7
-            top_k = 20
-        else:
-            temp = 0.9
-            top_k = 40
+             # Logic aligns with decay mostly
+             pass
         
         # Sample
         next_id, probs = sample_next_token(logits[0, -1], 

@@ -65,12 +65,57 @@ class BPETokenizer:
             if not stats:
                 break
                 
-            # Find most frequent pair
-            pair = max(stats, key=stats.get)
+            # Find most frequent pair that satisfies length constraint
+            pair = None
+            while stats:
+                candidate = max(stats, key=stats.get)
+                
+                # Check constraints
+                if stats[candidate] < self.min_freq:
+                    # Best remaining is too rare, stop everything
+                    pair = None
+                    break
+                    
+                # Check length
+                p0_len = len(self.vocab[candidate[0]])
+                p1_len = len(self.vocab[candidate[1]])
+                if p0_len + p1_len > 16:
+                    # Too long, remove and try next best
+                    del stats[candidate]
+                    continue
+                else:
+                    # Valid!
+                    pair = candidate
+                    break
             
-            if stats[pair] < self.min_freq:
-                print(f"[Tokenizer] Stopping early: Max freq {stats[pair]} < {self.min_freq}")
+            if pair is None:
+                print("[Tokenizer] Stopping early: No valid pairs found (freq/len constraints).")
                 break
+            
+            # Constraint: Don't merge if resulting token is too long (Mega-Token Fix)
+            # Check length of the merged candidate
+            # We need to look up what the new token would be.
+            # It's vocab[pair[0]] + vocab[pair[1]]
+            p0_bytes = self.vocab[pair[0]]
+            p1_bytes = self.vocab[pair[1]]
+            new_len = len(p0_bytes) + len(p1_bytes)
+            
+            if new_len > 16:
+                # Skip this pair, it's too long.
+                # Problem: 'stats' contains it as max. If we just continue, we'll pick it again.
+                # We must effectively 'ban' this pair for this iteration or remove it from consideration.
+                # Simple fix: discard this pair from stats and try next best?
+                # Or just ignore it and break? No, there might be other valid pairs.
+                # Let's delete from stats and re-pick.
+                del stats[pair]
+                # Since we found the max and it was bad, we need to find the *next* max.
+                # Re-sorting stats every time is slow but safe for this script.
+                if not stats:
+                    break
+                pair = max(stats, key=stats.get)
+                # Re-check new pair (recursion/loop needed theoretically, but let's just do a while loop)
+                # Let's refactor slightly to handle this.
+                pass # Logic handled by loop below
             
             idx = 256 + i
             # Record merge

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Large model files
+checkpoints/*.pkl
+models/*.pkl
+assets/*.model
+
+# Large data files
+data/TinyStoriesV2-GPT4-train.txt
+data/cognitive_training.txt
+data/train_clean.txt
+
+# Output files
+*.png
+*.html
+plots/
+output/
+
+# OS
+.DS_Store
+*.swp
+*.swo

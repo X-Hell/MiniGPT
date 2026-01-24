@@ -1,257 +1,85 @@
-<div align="center">
+# MiniGPT: The NumPy-Only LLM Inference Engine
 
-# MiniGPT: The Educational Inference Engine
-### From Naive FP32 to Research-Grade Optimization in 10 Phases
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
-[![Numpy-Only](https://img.shields.io/badge/dependency-numpy_only-red)](https://numpy.org)
-[![Status: Optimized](https://img.shields.io/badge/Status-Optimized-success)]()
+**A dependency-free implementation of modern LLM architectures (Llama 3, Mistral) built from scratch in NumPy.**
 
-**MiniGPT** is a journey through the mechanics of Large Language Models. Built entirely in `numpy` without autograd libraries, it demonstrates how raw arithmetic transforms into intelligence, optimizing a Transformer from a memory-hogging baseline to a lean, quantized inference engine.
-
-[ **[Explore Codebase](mini_transformer/)** ] • [ **[Evolution](phase_metrics.png)** ] • [ **[Visualization](attn_interactive.html)** ]
+MiniGPT is designed to demystify the "black box" of Transformers. By implementing everything—from the attention mechanism to the tokenizer—using only `numpy`, this project provides a clean, educational look at how Large Language Models actually "think," without the abstraction layers of PyTorch or TensorFlow.
 
 ---
 
-</div>
+## Roadmap & Status
 
-## 🧠 Roadmap to Cognitive AI
-**Goal:** Self-Aware Embodied Intelligence  
-**Status:** Phase 20/50 (Foundation Model Complete)  
-`[████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 40%`
+The project follows a strategic 10-milestone roadmap to evolve from a basic script to a production-grade inference engine.
 
----
+### Completed Milestones
+- [x] **Milestone 1: The Engine Core.** *Achieved.*
+  Implemented the base Transformer architecture with character-level tokenization.
+  > *Data:* Established baseline perplexity of ~181.3.
 
-## 📈 Project Evolution (Phases 1-15)
+- [x] **Milestone 2: Inference Optimization.** *Achieved.*
+  Implemented KV Caching (Ring Buffer) and Static Memory Allocation.
+  > *Data:* Reduced inference latency from ~55ms to ~42ms per token.
 
-This project was built in **15 distinct phases**, mirroring the real-world optimization pipeline of modern LLMs. Below is comprehensive data on how each architectural decision impacted quality, latency, and memory.
+- [x] **Milestone 3: Parameter Efficiency.** *Achieved.*
+  Implemented Weight Tying and INT8 Quantization support.
+  > *Data:* Reduced parameter count by 19% and memory footprint significantly.
 
-### 📊 Quality Metrics Across Phases
+- [x] **Milestone 4: Modern Architecture.** *Achieved.*
+  Upgraded to Llama 3 standards: SwiGLU activations, RMSNorm, Grouped Query Attention (GQA), and Rotary Embeddings (RoPE).
+  > *Data:* Lowered perplexity to 67.4, enabling basic grammar acquisition.
 
-![Quality Metrics](plots/quality_across_phases.png)
+### In-Progress
+- [~] **Milestone 5: Semantic Coherence.** *In Progress.*
+  Transitioning from character-level to Sub-word BPE Tokenization (GPT-4 regex style) and scaling training on the "TinyStories" dataset to fix word-gluing and context shock.
 
-### ⏱️ Latency & Memory Footprint
+### Future Milestones
+- [ ] **Milestone 6: Training Stability.**
+  Implement Cosine Learning Rate Decay and Gradient Clipping to support deeper networks.
 
-![Latency Memory](plots/latency_memory_across_phases.png)
+- [ ] **Milestone 7: Scaling Laws.**
+  Expand architecture to 6 Layers / 384 Dim (approx. 15M params) and increase context window to 256+.
 
-### 🔢 MatMul Operations Reduction
+- [ ] **Milestone 8: Packaging.**
+  Refactor into a pip-installable `src/minigpt` package with formal configuration management (`dataclasses`).
 
-![MatMul Ops](plots/matmul_ops_per_phase.png)
+- [ ] **Milestone 9: Speed.**
+  Implement custom C++/CUDA kernels for the critical Matrix Multiplication operations (optional `ctypes` bridge).
 
-### 🎯 Quality vs Memory Tradeoff
-
-![Quality vs Memory](plots/quality_vs_memory.png)
-
----
-
-### 📋 Complete Phase Metrics
-
-| Phase | Avg LogProb | Avg Entropy | Latency (ms) | Memory (KB) | MatMul Ops | Notes |
-| :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| 1 | -5.20 | 2.31 | 55.0 | 6348 | 1530 | FP32 baseline |
-| 2 | -5.18 | 2.29 | 54.2 | 6348 | 1530 | MatMul logging |
-| 3 | -4.95 | 2.15 | 42.1 | 7065 | 1224 | KV Cache |
-| 4 | -4.72 | 2.08 | 38.5 | 5427 | 1020 | Weight Tying (-19% params) |
-| 5 | -4.65 | 2.01 | 31.2 | 3994 | 918 | INT8 Attention |
-| 6 | -4.58 | 1.94 | 24.3 | 3174 | 867 | INT8 FFN |
-| 7 | -4.21 | 1.78 | 18.1 | 2253 | 612 | Low-Rank FFN |
-| 8 | -4.05 | 1.68 | 15.2 | 2048 | 510 | QKV Fusion |
-| 9 | -4.02 | 1.64 | 14.8 | 2048 | 510 | Multi-Head Viz |
-| 10 | -3.95 | 1.42 | 14.5 | 2048 | 510 | Entropy Analysis |
-| 11 | -3.82 | 1.38 | 12.8 | 2457 | 459 | GQA+BPE+Fused QKV (-40% MatMul) |
-| 12 | -3.42 | 1.25 | 11.5 | 2457 | 459 | Label Smoothing + INT8 KV |
-| 13 | -2.85 | 1.12 | 9.8 | 1843 | 408 | FFN 2.5x + Entropy Decode |
-| 14 | -2.62 | 1.05 | 8.5 | 1843 | 408 | Cognitive Controller |
-| 15 | -2.44 | 0.98 | 7.2 | 1843 | 408 | QAT + LoRA + KV Eviction |
-| 16 | -2.44 | 0.96 | 8.1 | 1843 | 408 | SwiGLU + Logit Lens + Min-P |
-| 17 | -2.38 | 0.95 | 9.2 | 2560 | 408 | Vocab 1024 + RoPE |
-| 18 | -0.61 | 0.42 | 9.5 | 3200 | 408 | Vocab 2048 + Weight Decay |
-| 19 | -0.63 | 0.41 | 7.5 | 240 | 408 | Static KV Ring Buffer + 256 ctx |
-| **20** | **-0.34** | **0.28** | **15.2** | **1152** | **1581** | **NanoGPT (6L/384D) + Cosine LR** |
-
-> **Summary**: LogProb improved from **-5.20 → -0.34** (+93%), Latency ~15ms (Deep Model), MatMul ops scaled for intelligence.
+- [ ] **Milestone 10: Instruction Tuning.**
+  Fine-tune on an Alpaca-style dataset to transition the model from "Storyteller" to "Assistant".
 
 ---
 
-## 🤖 Robotics & Embodied AI Benefits
+## Features & Usage
 
-The Elsoro Mini kernel architecture is designed for **humanoid RL** and **self-aware robots**:
+MiniGPT is built for transparency. It includes built-in tools to visualize the model's internal state during inference.
 
-| Benefit | Description |
-| :--- | :--- |
-| **Low-Latency Decision Loop** | Fused kernels + KV-cache enable sub-10ms language+perception inference for real-time motor control |
-| **On-Device Adaptation** | Quantized models + LoRA adapters enable local fine-tuning for personalization |
-| **Multimodal Fusion Ready** | Modular pipeline extends to fused audio/vision tensors for embodied reasoning |
-| **Safety & Confidence Signals** | Per-token logprobs and entropy provide immediate fallback triggers for risky physical actions |
-| **Power-Efficient Inference** | INT8 paths + optimized matmul scheduling reduce battery drain on mobile humanoids |
-| **Scalable Hierarchy** | Small LM for high-level planning + RL policies for low-level control with consistent telemetry |
+### Quick Start
 
-> **Next Steps**: Integrate sensor pipeline (camera/LiDAR) into prefill, expose confidence hooks to RL controller, build sim-to-hardware validation harness.
-
----
-
-### Evolution Markers (Detailed)
-
-| **Phase** | **Major Change** | **Params** | **Peak Memory** | **Notes** |
-| :--- | :--- | :--- | :--- | :--- |
-| **1** | `FP32 Transformer` | ~4.8M | ~6.2 MB | Baseline implementation. Functional but inefficient. |
-| **2** | `Explicit Logger` | ~4.8M | ~6.2 MB | Added visibility into MatMul operations (Flops tracking). |
-| **3** | `KV Cache` | ~4.8M | ~6.9 MB | **Key Feature:** Caching keys/values to speed up autoregressive decoding. |
-| **4** | `Weight Tying` | **~3.9M** | **~5.3 MB** | 📉 **-19% Params**. Shared embeddings for input and output projection. |
-| **5** | `INT8 Attention` | ~3.9M | **~3.9 MB** | Quantized Q/K/V projections for lower memory bandwidth. |
-| **6** | `INT8 FFN` | ~3.9M | **~3.1 MB** | **Stable**. Post-training quantization of the Feed-Forward Network. |
-| **7** | `Low-Rank FFN` | **~1.6M** | **~2.2 MB** | 📉 **Huge Drop**. Replaced dense FFN with Low-Rank approximation. |
-| **8** | `QKV Fusion` | ~1.6M | ~2.0 MB | Merged matrices to reduce kernel launch overhead (simulated). |
-| **9** | `Multi-Head Viz` | ~1.6M | ~2.0 MB | Added `matplotlib` visualizations for attention heads. |
-| **10** | `Entropy Analysis` | ~1.6M | ~2.0 MB | **Research-Grade**. Entropy heatmaps & head similarity metrics. |
-| **11** | `Modern Arch (GQA+BPE)` | **~1.8M** | **~2.4 MB** | 🧠 **LLM Standard**: Fixed FFN bottleneck, BPE tokenizer, GQA, Fused QKV. |
-| **12** | `Quality & Stability` | ~1.8M | ~2.4 MB | 🎯 **Label Smoothing**, INT8 KV Cache, LogProb monitoring. Loss: -35%. |
-| **13** | `Deep Optimization` | **~1.4M** | **~1.8 MB** | 🚀 FFN 2.5x, FP16 KV+Sliding Window, Entropy-Aware Decoding, Early-Exit. |
-| **14** | `Cognitive Robotics` | ~1.4M | ~1.8 MB | 🤖 **Meta-Controller**: Entropy gating, head disagreement, intention pipeline. |
-| **15** | `Production Optimization` | ~1.4M | ~1.8 MB | ⚡ **QAT**, **LoRA** (95% param reduction), INT8 KV eviction, benchmarking. |
-| **16** | `Modern Arch` | ~1.5M | ~1.9 MB | **SwiGLU** FFN (SiLU), Logit Lens, Min-P Sampling. |
-| **17** | `Vocab Expansion` | ~1.8M | ~2.5 MB | **RoPE** (Rotary Embeddings), Vocab 1024. |
-| **18** | `Stability` | ~2.1M | ~3.2 MB | Vocab 2048, Weight Decay 0.02. |
-| **19** | `Performance` | ~2.1M | **~0.2 MB** | 🚀 **Static Ring Buffer** (Zero Copy), Context 256, Dynamic Temp. |
-| **20** | `NanoGPT Scale` | **~10.8M** | ~5.5 MB | 🧠 **6 Layers, 384 Dim**. "Mega-Token" Fix, Cosine Scheduler. Loss: 2.95. |
-
-
----
-
-## ⚡ Performance Deep Dive
-
-### 📉 Memory Footprint Reduction
-Peak memory usage dropped by **~68%** from Phase 1 to Phase 10 through quantization and architectural optimization.
-
-```text
-Phase 1   ██████████████████████████ 6.2 MB
-Phase 4   ████████████████████       5.3 MB
-Phase 6   ████████████               3.1 MB
-Phase 8   █████████                  2.0 MB
-Phase 10  █████████                  2.0 MB
-Phase 20  ██████████████████████     5.5 MB (6 Layers)
-```
-
-### ⚡ Inference Performance (CPU)
-Optimization isn't just about memory; it's about speed. Gains come from **INT8 MatMuls**, **KV Caching**, and **QKV Fusion**.
-
-| Phase | Tokens/sec | Improvement |
-| :--- | :--- | :--- |
-| **Phase 1** | ~18 | Baseline |
-| **Phase 4** | ~23 | +27% |
-| **Phase 6** | ~41 | +127% |
-| **Phase 8** | ~55 | +205% |
-| **Phase 10** | **~58** | **+222%** |
-
-### 🔍 Attention Quality Metrics
-Does compression hurt quality? We track **Attention Entropy** (uncertainty). Lower entropy implies more "confident", focused attention heads.
-
-| Phase | Avg Entropy (nats) | Note |
-| :--- | :--- | :--- |
-| **Phase 3** | 2.31 | Baseline |
-| **Phase 6** | 1.94 | Post-Quantization |
-| **Phase 8** | 1.61 | Optimized |
-| **Phase 10** | **1.42** | **Most Focused** |
-
-> **Conclusion**: Quantization + Low-Rank FFNs actually *improved* head specialization rather than collapsing it.
-
----
-
-## 🧠 Technical Highlights
-
-### 1. Manual Autograd Engine
-Every gradient in this project is calculated **by hand**.
-- `loss.backward()`? No. We calculate $\frac{\partial L}{\partial W}$ manually for Attention, LayerNorm, and Softmax.
-- This unveils the "black box" of backpropagation.
-
-### 2. INT8 Quantization & Low-Rank Adaptation
-We don't just compress; we redesign.
-- **Quantization**: Symmetric per-channel scaling for weights, reducing memory by 4x.
-- **Low-Rank**: Factorizing large weight matrices $W \approx A \times B$ where $rank(A,B) \ll rank(W)$.
-
-### 3. Nucleus Sampling (Top-p)
-Instead of greedy decoding, we implement **Nucleus Sampling** to dynamically cut off the tail of the probability distribution, balancing creativity with coherence.
-
----
-
-## 🚀 Quick Start
-
-### Installation
-Clone the repository and install the single dependency: `numpy`.
+Running inference is as simple as executing the script. The model will auto-download dependencies and pre-trained weights if strictly necessary (or use random weights for demo).
 
 ```bash
-git clone https://github.com/your-username/minigpt.git
-cd minigpt
-pip install numpy matplotlib seaborn
+# Clone the repository
+git clone https://github.com/elsoro/MiniGPT.git
+cd MiniGPT
+
+# Install dependencies (only numpy and tqdm)
+pip install -r requirements.txt
+
+# Run generation
+python scripts/generate.py --prompt "Once upon a time"
 ```
 
-### Training
-Train the model on the Shakespeare dataset (auto-downloaded).
+### Visualization
 
-```bash
-python mini_transformer/train.py
-```
-*Outputs: `mini_transformer_model.pkl`*
+MiniGPT provides rich visual feedback to understand token generation:
 
-### Inference & Visualization
-Run the inference engine. This will generate the attention maps and memory logs.
-
-```bash
-python -m mini_transformer.run_inference
-```
-
-**Generated Artifacts**:
-- `attn_prefill.png`: Attention patterns during prompt processing.
-- `head_similarity.png`: Cosine similarity between attention heads.
-- `entropy_heatmap.png`: Uncertainty quantification per head.
-
-### Phase Metrics Visualization
-
-Regenerate phase evolution plots from `phase_metrics.csv`:
-
-```bash
-python tools/plot_phase_metrics.py
-```
-
-**Output plots** (in `plots/`):
-- `quality_across_phases.png` - LogProb, Entropy, Perplexity trends
-- `latency_memory_across_phases.png` - Dual-axis latency/memory
-- `matmul_ops_per_phase.png` - MatMul operations bar chart
-- `quality_vs_memory.png` - Pareto frontier visualization
-
----
-
-## ✅ CI/Validation Checklist
-
-Before committing changes, run the following validation steps:
-
-- [ ] **Deterministic Runs**: Run 3 evaluation runs per phase with fixed seeds and store averages
-- [ ] **Quality Regression Check**: Fail if `avg_logprob` drops > 0.1 or perplexity increases > 5%
-- [ ] **Power/Thermal Benchmark**: Run 1-minute steady-state power measurement (if hardware available)
-- [ ] **Low-Confidence Handling**: Validate fallback policies with adversarial prompts
-- [ ] **Sim-to-Hardware Safety**: Run integrated safety checks for RL policy transfer
-
-### Recommended Commit Message
-
-```
-perf: fuse QKV + optimize KV-cache; add phase metrics and visualization
-```
-
----
-
-## 🎨 Visualization Gallery
-
-| Attention Pattern | Head Similarity | Entropy Heatmap |
-| :---: | :---: | :---: |
-| ![Attn](attn_prefill.png) | ![Sim](head_similarity.png) | ![Ent](entropy_heatmap.png) |
-
----
-
-<div align="center">
-
-**Educational Use Only**
-Designed for understanding, not production.
-*Built with ❤️ in Python*
-
-</div>
+*   **Log Probabilities:** View the confidence distribution for each generated token.
+    *(See `logprobs.png`)*
+*   **Attention Maps:** Interactive HTML visualization of attention weights across heads.
+    *(See `attn_interactive.html`)*
+*   **Inference Timeline:** Profiling data showing time spent in Compute vs. Memory operations.
+    *(See `inference_timeline.png`)*

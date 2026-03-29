@@ -9,14 +9,12 @@ dist/
 build/
 
 # Large model files
-checkpoints/*.pkl
+checkpoints*/*.pkl
 models/*.pkl
 assets/*.model
 
-# Large data files
-data/TinyStoriesV2-GPT4-train.txt
-data/cognitive_training.txt
-data/train_clean.txt
+# Large data files (downloadable)
+data/TinyStoriesV2*.txt
 
 # Output files
 *.png

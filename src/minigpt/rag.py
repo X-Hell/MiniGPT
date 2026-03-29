@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import re
 import pickle
 from typing import List, Tuple, Optional
 from .model import MiniTransformer
@@ -74,75 +75,6 @@ class VectorStore:
                 self.chunks = data['chunks']
 
 
-class BM25:
-    """
-    Simple BM25 implementation for lexical scoring.
-    NumPy-only, no external dependencies.
-    """
-    def __init__(self, k1: float = 1.5, b: float = 0.75):
-        self.k1 = k1
-        self.b = b
-        self.doc_freqs: dict = {}  # term -> count of docs containing term
-        self.doc_lens: List[int] = []
-        self.avg_dl: float = 0.0
-        self.corpus: List[List[str]] = []
-        self.N: int = 0
-    
-    def _tokenize(self, text: str) -> List[str]:
-        """Simple whitespace tokenization with lowercasing."""
-        return re.sub(r'[^\w\s]', '', text.lower()).split()
-    
-    def index(self, docs: List[str]):
-        """Build BM25 index from documents."""
-        self.corpus = [self._tokenize(doc) for doc in docs]
-        self.N = len(self.corpus)
-        self.doc_lens = [len(doc) for doc in self.corpus]
-        self.avg_dl = np.mean(self.doc_lens) if self.doc_lens else 1.0
-        
-        # Count document frequencies
-        self.doc_freqs = {}
-        for doc in self.corpus:
-            unique_terms = set(doc)
-            for term in unique_terms:
-                self.doc_freqs[term] = self.doc_freqs.get(term, 0) + 1
-    
-    def score(self, query: str, doc_idx: int) -> float:
-        """Compute BM25 score for query against a single document."""
-        if doc_idx >= len(self.corpus):
-            return 0.0
-        
-        query_terms = self._tokenize(query)
-        doc = self.corpus[doc_idx]
-        doc_len = self.doc_lens[doc_idx]
-        
-        score = 0.0
-        for term in query_terms:
-            if term not in self.doc_freqs:
-                continue
-            
-            # Term frequency in document
-            tf = doc.count(term)
-            if tf == 0:
-                continue
-            
-            # IDF
-            df = self.doc_freqs[term]
-            idf = np.log((self.N - df + 0.5) / (df + 0.5) + 1.0)
-            
-            # BM25 formula
-            numerator = tf * (self.k1 + 1)
-            denominator = tf + self.k1 * (1 - self.b + self.b * (doc_len / self.avg_dl))
-            score += idf * (numerator / denominator)
-        
-        return score
-    
-    def score_all(self, query: str) -> np.ndarray:
-        """Score all documents for a query."""
-        return np.array([self.score(query, i) for i in range(self.N)])
-
-import re
-
-
 class QueryRefiner:
     """
     On-device lightweight query refinement using regex and heuristics.
@@ -191,15 +123,13 @@ class QueryRefiner:
 class Retriever:
     """
     Handles document ingestion, embedding generation (using MiniTransformer),
-    and retrieval orchestration with hybrid dense + BM25 scoring.
+    and retrieval orchestration with dense scoring.
     """
     def __init__(self, model: MiniTransformer, tokenizer: BPETokenizer, vector_store: VectorStore):
         self.model = model
         self.tokenizer = tokenizer
         self.store = vector_store
         self.refiner = QueryRefiner()
-        self.bm25 = BM25()  # Lexical index
-        self._raw_chunks: List[str] = []  # Keep raw chunks for BM25
         
     def encode(self, text_list: List[str]) -> np.ndarray:
         """
@@ -243,19 +173,15 @@ class Retriever:
     def index_documents(self, text_chunks: List[str]):
         """
         Embed and store a list of text chunks.
-        Also builds BM25 index for hybrid retrieval.
         """
         print(f"[Retriever] Indexing {len(text_chunks)} chunks...")
-        self._raw_chunks = text_chunks
         
         # Dense index
         vectors = self.encode(text_chunks)
         if len(vectors) > 0:
             self.store.add(vectors, text_chunks)
         
-        # BM25 index
-        self.bm25.index(text_chunks)
-        print(f"[Retriever] Indexed {len(vectors)} vectors + BM25.")
+        print(f"[Retriever] Indexed {len(vectors)} vectors.")
         
     def retrieve(self, query: str, k: int = 8) -> List[Tuple[str, float]]:
         """
@@ -266,38 +192,6 @@ class Retriever:
             return []
             
         return self.store.search(q_vec[0], k=k)
-    
-    def retrieve_hybrid(self, query: str, k: int = 6, alpha: float = 0.7) -> List[Tuple[str, float, int]]:
-        """
-        Hybrid retrieval combining dense and BM25 scores.
-        Returns: List of (chunk, combined_score, chunk_idx)
-        alpha: weight for dense score (1-alpha for BM25)
-        """
-        if not self._raw_chunks:
-            return []
-        
-        # Dense scores
-        dense_results = self.retrieve(query, k=len(self._raw_chunks))  # Get all
-        dense_scores = {chunk: score for chunk, score in dense_results}
-        
-        # BM25 scores
-        bm25_scores = self.bm25.score_all(query)
-        # Normalize BM25 to 0-1
-        if bm25_scores.max() > 0:
-            bm25_scores = bm25_scores / bm25_scores.max()
-        
-        # Combine scores
-        combined = []
-        for idx, chunk in enumerate(self._raw_chunks):
-            dense_s = dense_scores.get(chunk, 0.0)
-            bm25_s = bm25_scores[idx] if idx < len(bm25_scores) else 0.0
-            combined_s = alpha * dense_s + (1 - alpha) * bm25_s
-            combined.append((chunk, combined_s, idx))
-        
-        # Sort by combined score and take top-k
-        combined.sort(key=lambda x: x[1], reverse=True)
-        return combined[:k]
-
         
     def retrieve_with_refinement(self, query: str, k: int = 8) -> dict:
         """

@@ -1,13 +1,14 @@
-import numpy as np
 import os
 import pickle
 import math
 import time
 from typing import Optional, List, Any
+from .backend import xp, scatter_add, to_cpu
 from .model import MiniTransformer
 from .config import TrainConfig
 from .optimizer import AdamW
 from .tokenizer import BPETokenizer
+import numpy as np
 
 class Trainer:
     """
@@ -75,33 +76,37 @@ class Trainer:
         return min_lr + coeff * (max_lr - min_lr)
         
     def clip_grads(self, grads):
-        dW_emb, layer_grads, _ = grads
-        sq_sum = np.sum(dW_emb**2)
-        
+        """Clip gradients using v2 backward API (4-tuple with LN gammas)."""
+        dW_emb, layer_grads, _, ln_f_d_gamma = grads
+        sq_sum = float(xp.sum(dW_emb**2))
+
         for l_grads in layer_grads:
-            ffn_grads, attn_grads = l_grads
+            ffn_grads, attn_grads, ln1_d_gamma, ln2_d_gamma = l_grads
             for g in ffn_grads:
-                sq_sum += np.sum(g**2)
+                sq_sum += float(xp.sum(g**2))
             dW_qkv, dW_o = attn_grads
-            sq_sum += np.sum(dW_qkv**2) + np.sum(dW_o**2)
-            
-        grad_norm = np.sqrt(sq_sum)
+            sq_sum += float(xp.sum(dW_qkv**2)) + float(xp.sum(dW_o**2))
+            sq_sum += float(xp.sum(ln1_d_gamma**2)) + float(xp.sum(ln2_d_gamma**2))
+
+        sq_sum += float(xp.sum(ln_f_d_gamma**2))
+
+        grad_norm = math.sqrt(sq_sum)
         clip_scale = 1.0
         if grad_norm > self.config.grad_clip:
-            clip_scale = self.config.grad_clip / grad_norm
-            
+            clip_scale = self.config.grad_clip / (grad_norm + 1e-6)
+
         def scale_grads(g, scale):
             if isinstance(g, tuple):
                 return tuple(scale_grads(x, scale) for x in g)
             elif isinstance(g, list):
                 return [scale_grads(x, scale) for x in g]
-            elif isinstance(g, np.ndarray):
+            elif hasattr(g, '__mul__'):
                 return g * scale
             return g
-            
+
         if clip_scale < 1.0:
             grads = scale_grads(grads, clip_scale)
-            
+
         return grads, grad_norm
 
     def train(self, train_data: np.ndarray):

@@ -1,0 +1,2400 @@
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+
+User: Who are you?
+Assistant: I am MiniGPT, a compact on-device language model.
+
+User: What is attention?
+Assistant: Attention is a mechanism in neural networks that helps the model focus on important parts of the input.
+
+User: Who are you?
+Assistant: I am MiniGPT. How can I help you today?
+
+User: What is machine learning?
+Assistant: Machine learning is training computers to learn patterns from data.
+
+User: Why is the sky blue?
+Assistant: The sky is blue because of Rayleigh scattering.
+
+User: What is a neural network?
+Assistant: A neural network is a computational model inspired by the human brain.
+
+User: What is the capital of France?
+Assistant: The capital of France is Paris.
+
+User: If A is B, and B is C, what is A?
+Assistant: A is C.
+

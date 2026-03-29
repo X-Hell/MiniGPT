@@ -1,7 +1,10 @@
 from typing import List, Dict, Tuple, Optional
 import os
 import pickle
-import regex as re
+try:
+    import regex as re
+except ImportError:
+    import re
 from .config import TokenizerConfig
 
 class BPETokenizer:

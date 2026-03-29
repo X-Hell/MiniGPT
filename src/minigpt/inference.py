@@ -76,7 +76,7 @@ class InferenceEngine:
         
         # 1. First pass: Prompt
         logits, _ = self.model.forward(current_tokens, start_pos=0, training=False)
-        token_logits = logits[:, -1, :] # (B, V)
+        token_logits = logits[:, -1, :].copy() # (B, V)
         
         generated_tokens = [[] for _ in range(B)]
         stats = [[] for _ in range(B)]
@@ -149,7 +149,8 @@ class InferenceEngine:
             current_tokens = np.concatenate([current_tokens, next_tokens], axis=1)
             
             # Record & Checks
-            stops = stop_sequences if stop_sequences else ["\nQ:", "\nObservation:", "\nMistake:", "\nQuestion:", "Answer:", "<EOS>"]
+            # BUG-04 FIX: Removed Answer to prevent premature truncation
+            stops = stop_sequences if stop_sequences else ["\nQ:", "\nObservation:", "\nMistake:", "\nQuestion:", "<EOS>"]
             eos_id = getattr(self.tokenizer, 'eos_id', None)
             
             for b in range(B):
@@ -170,11 +171,12 @@ class InferenceEngine:
                     finished[b] = True
                     continue
 
-                curr_text = self.tokenizer.decode(generated_tokens[b])
-                for stop in stops:
-                    if stop in curr_text:
-                        finished[b] = True
-                        break
+                if callback:
+                    # stream the difference in text?
+                    # simple approach: just stream the decoded token
+                    new_word = self.tokenizer.decode([tok_id])
+                    callback(new_word, confidences[b], entropies[b])
+
                 
                 if i > 3 and stopping_criteria:
                     avg_logprobs[b] = (avg_logprobs[b] * i + log_probs[b]) / (i + 1)
@@ -191,7 +193,8 @@ class InferenceEngine:
             token_logits = logits[:, 0, :]
             
         final_texts = []
-        stops = stop_sequences if stop_sequences else ["\nQ:", "\nObservation:", "\nMistake:", "\nQuestion:", "Answer:", "<EOS>"]
+        # BUG-04 FIX: Match the updated stop list (no Answer)
+        stops = stop_sequences if stop_sequences else ["\nQ:", "\nObservation:", "\nMistake:", "\nQuestion:", "<EOS>"]
         for b in range(B):
             text = self.tokenizer.decode(generated_tokens[b])
             for stop in stops:
@@ -265,7 +268,7 @@ class InferenceEngine:
         # 3. Coherence check (avg entropy)
         if stats:
             avg_entropy = np.mean([s['entropy'] for s in stats])
-            if avg_entropy > 4.0:
+            if avg_entropy > 7.0:
                 return False, "incoherent"
         
         # 4. Garbage pattern check (excessive special chars or very long single tokens)
@@ -275,71 +278,6 @@ class InferenceEngine:
         
         return True, "ok"
 
-    def verify_answer(self, answer: str, query: str, docs: List[str]) -> float:
-        """
-        Check if answer is grounded in retrieved documents.
-        Returns score 0.0-1.0 based on token overlap.
-        """
-        if not answer or not docs:
-            return 0.0
-        
-        # Tokenize answer and documents
-        answer_tokens = set(answer.lower().split())
-        doc_tokens = set()
-        for doc in docs:
-            doc_tokens.update(doc.lower().split())
-        
-        if not answer_tokens:
-            return 0.0
-        
-        # Calculate overlap ratio
-        overlap = answer_tokens.intersection(doc_tokens)
-        score = len(overlap) / len(answer_tokens)
-        return min(score, 1.0)
-
-    def self_consistency_ensemble(self, query: str, context: str, n: int = 3) -> List[Tuple[str, List[dict]]]:
-        """
-        Generate n candidate answers in parallel.
-        Returns list of (answer_text, stats).
-        """
-        prompt = f"{context}\n\nQuestion: {query}\nAnswer:"
-        
-        # Parallel Generation
-        # We use a moderate temperature to encourage diversity across the batch
-        texts, stats_list = self.generate(
-            prompt,
-            max_tokens=80,
-            temperature=0.4,
-            top_k=40,
-            repetition_penalty=1.15,
-            num_return_sequences=n
-        )
-        
-        candidates = []
-        for i in range(n):
-            candidates.append((texts[i], stats_list[i]))
-        
-        return candidates
-
-    def rerank_candidates(self, candidates: List[Tuple[str, List[dict]]], query: str, docs: List[str]) -> Tuple[str, float]:
-        """
-        Pick best candidate by verification score.
-        Returns (best_answer, best_score).
-        """
-        best_answer = ""
-        best_score = 0.0
-        
-        for answer, stats in candidates:
-            score = self.verify_answer(answer, query, docs)
-            if score > best_score:
-                best_score = score
-                best_answer = answer
-        
-        return best_answer, best_score
-
-    # Verification thresholds
-    VERIFY_ACCEPT = 0.4
-    VERIFY_RETRY = 0.2
 
     def respond(self, query: str, retriever) -> dict:
         """
@@ -513,8 +451,8 @@ Rules:
         telemetry["query_class"] = "GROUNDED"
         
         # 4. Generate
-        # Safety thresholds: Stop if avg logprob < -3.0 OR entropy > 1.5
-        stopping = {"min_avg_logprob": -3.0, "max_avg_entropy": 1.5}
+        # BUG-03 FIX: Relaxed thresholds — old values (-3.0 / 1.5) fired at token 4 for any real model
+        stopping = {"min_avg_logprob": -6.0, "max_avg_entropy": 6.0}
         
         # Explicitly ban EOS to prevent immediate stop?
         eos_id = getattr(self.tokenizer, 'eos_id', 256)
@@ -544,7 +482,8 @@ Rules:
         telemetry["avg_logprob"] = avg_logprob
         telemetry["avg_entropy"] = avg_entropy
         
-        if avg_logprob < -3.0:
+        # BUG-03 FIX: Relaxed threshold from -3.0 to -6.0
+        if avg_logprob < -6.0:
              telemetry["fallback_triggered"] = True
              return {"response": "I started answering but became uncertain. Please provide more context.", "telemetry": telemetry}
 

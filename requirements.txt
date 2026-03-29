@@ -2,3 +2,5 @@ numpy>=1.20.0
 tqdm>=4.60.0
 requests>=2.25.0
 regex>=2022.1.18
+datasets>=2.19.0
+huggingface_hub>=0.22.0

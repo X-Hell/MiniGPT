@@ -1,54 +1,63 @@
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
+
 @dataclass
 class TokenizerConfig:
-    """Configuration for the BPETokenizer."""
-    vocab_size: int = 4096
-    min_frequency: int = 3
+    """GPT-1 BPE tokenizer, 40K vocab + 3 special tokens."""
+    vocab_size: int = 40000
+    min_frequency: int = 2
     # GPT-4 split pattern
     pattern: str = r"""'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+"""
+    special_tokens: Tuple[str, ...] = ("<pad>", "<eos>", "<unk>")
+
 
 @dataclass
 class ModelConfig:
-    """Configuration for the MiniTransformer model."""
-    vocab_size: int = 4096
-    d_model: int = 384
-    n_layers: int = 6
-    n_heads: int = 6
-    n_kv_heads: int = 2  # GQA: Grouped Query Attention
-    d_ff: int = 0  # 0 means auto-calculated (SwiGLU: 2/3 * 4 * d_model)
+    """GPT-1 target: 117M parameters (d=768, L=12, H=12)."""
+    vocab_size: int = 40000
+    d_model: int = 768
+    n_layers: int = 12
+    n_heads: int = 12
+    d_ff: int = 0                         # auto = 4 * d_model
     max_len: int = 512
-    dropout: float = 0.0  # Large dataset vs small model -- regularization unnecessary
-    rope_theta: float = 500000.0  # RoPE base period
+    dropout: float = 0.1
+
+    # --- Legacy fields kept at no-op defaults for back-compat with old
+    #     checkpoints and scripts/train.py CLI flags. Do NOT use them in new
+    #     code; model.py ignores rope_theta entirely and forces n_kv_heads =
+    #     n_heads.
+    n_kv_heads: int = 12                  # always == n_heads for GPT-1
+    rope_theta: float = 0.0               # unused (no RoPE in GPT-1)
 
     def __post_init__(self):
-        # Auto-calculate d_ff for SwiGLU if not set
         if self.d_ff == 0:
-            # Standard SwiGLU hidden dim: 2/3 * 4 * d_model, rounded to multiple of 256 for efficiency
-            hidden = int(2 * 4 * self.d_model / 3)
-            self.d_ff = 256 * ((hidden + 255) // 256)
+            self.d_ff = 4 * self.d_model          # GPT-1 ratio
+        if self.n_kv_heads != self.n_heads:
+            # GPT-1 has full MHA; silently normalize
+            self.n_kv_heads = self.n_heads
+
 
 @dataclass
 class TrainConfig:
-    """Configuration for the training loop."""
-    # Optimization
-    learning_rate: float = 6e-4     # Chinchilla-scaled for 12.6M params
-    min_lr: float = 6e-5            # 10% of peak
-    batch_size: int = 64            # Micro-batch size
-    accum_steps: int = 2            # Gradient accumulation -> effective batch = 128
-    max_steps: int = 50000
-    warmup_steps: int = 500         # ~1% of total steps
-    weight_decay: float = 0.1
+    """GPT-1 training: Adam + L2, linear warmup + cosine decay."""
+    learning_rate: float = 2.5e-4
+    min_lr: float = 1e-5
+    batch_size: int = 8                   # micro-batch for 117M at T=512 FP16
+    accum_steps: int = 8                  # effective batch = 64
+    max_steps: int = 100000
+    warmup_steps: int = 2000
+    weight_decay: float = 0.01
     grad_clip: float = 1.0
     beta1: float = 0.9
-    beta2: float = 0.95             # More stable for LMs than 0.999
+    beta2: float = 0.98                   # GPT-1 paper value
+    eps: float = 1e-8
 
     # Checkpointing & Logging
-    eval_interval: int = 250
+    eval_interval: int = 500
     log_interval: int = 10
     save_interval: int = 1000
-    save_dir: str = "checkpoints_v2"
+    save_dir: str = "checkpoints_gpt1"
 
     # Dataloader
-    seq_len: int = 256  # Phase 1: 256, Phase 2: 512
+    seq_len: int = 512

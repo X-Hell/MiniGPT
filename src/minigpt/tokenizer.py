@@ -7,6 +7,128 @@ except ImportError:
     import re
 from .config import TokenizerConfig
 
+
+# ============================================================================
+#  HuggingFace-tokenizers-backed BPE  (GPT-1 target: 40K vocab + 3 specials)
+# ============================================================================
+
+class HFBPETokenizer:
+    """
+    BPE tokenizer backed by the `tokenizers` library (Rust implementation).
+    Matches the public API of BPETokenizer: train / encode / decode / save / load.
+
+    Requires:
+        pip install tokenizers
+        pip install datasets   (only for train_on_fineweb)
+    """
+
+    def __init__(self, config: Optional[TokenizerConfig] = None):
+        try:
+            from tokenizers import Tokenizer
+            from tokenizers.models import BPE
+            from tokenizers.pre_tokenizers import ByteLevel
+            from tokenizers.decoders import ByteLevel as ByteLevelDecoder
+        except ImportError as e:
+            raise ImportError(
+                "HFBPETokenizer requires the `tokenizers` package: "
+                "pip install tokenizers"
+            ) from e
+
+        self.config = config or TokenizerConfig()
+        self.vocab_size = self.config.vocab_size
+        self.special_tokens = list(getattr(
+            self.config, "special_tokens", ("<pad>", "<eos>", "<unk>")
+        ))
+
+        self._tk = Tokenizer(BPE(unk_token="<unk>"))
+        self._tk.pre_tokenizer = ByteLevel(add_prefix_space=False)
+        self._tk.decoder = ByteLevelDecoder()
+
+        # Cached after train/load
+        self.pad_id: Optional[int] = None
+        self.eos_id: Optional[int] = None
+        self.unk_id: Optional[int] = None
+
+    # ---- train / save / load ------------------------------------------------
+
+    def train_from_iterator(self, text_iter, min_frequency: int = 2):
+        """Train on an iterator of strings (one document per item)."""
+        try:
+            from tokenizers.trainers import BpeTrainer
+        except ImportError as e:
+            raise ImportError("pip install tokenizers") from e
+        trainer = BpeTrainer(
+            vocab_size=self.vocab_size,
+            min_frequency=min_frequency,
+            special_tokens=self.special_tokens,
+            show_progress=True,
+        )
+        self._tk.train_from_iterator(text_iter, trainer=trainer)
+        self._cache_special_ids()
+
+    def train(self, text: str):
+        """Train on a single string (splits on newlines for the iterator)."""
+        self.train_from_iterator(iter(text.split("\n")),
+                                 min_frequency=self.config.min_frequency)
+
+    def save(self, path: str = "tokenizer_hf.json"):
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+        self._tk.save(path)
+
+    def load(self, path: str):
+        try:
+            from tokenizers import Tokenizer
+        except ImportError as e:
+            raise ImportError("pip install tokenizers") from e
+        self._tk = Tokenizer.from_file(path)
+        self._cache_special_ids()
+
+    def _cache_special_ids(self):
+        self.pad_id = self._tk.token_to_id("<pad>")
+        self.eos_id = self._tk.token_to_id("<eos>")
+        self.unk_id = self._tk.token_to_id("<unk>")
+
+    # ---- encode / decode (matches BPETokenizer interface) -------------------
+
+    def encode(self, text: str) -> List[int]:
+        return self._tk.encode(text).ids
+
+    def decode(self, ids: List[int]) -> str:
+        return self._tk.decode(ids, skip_special_tokens=False)
+
+    # ---- FineWeb-Edu training recipe ----------------------------------------
+
+    @classmethod
+    def train_on_fineweb(cls, n_docs: int = 100_000,
+                         vocab_size: int = 40_000,
+                         save_path: str = "assets/tokenizer_gpt1_40k.json"):
+        """
+        Stream FineWeb-Edu, train a 40K BPE, save to JSON.
+        Requires: pip install datasets tokenizers
+        """
+        try:
+            from datasets import load_dataset
+        except ImportError as e:
+            raise ImportError("pip install datasets") from e
+
+        ds = load_dataset("HuggingFaceFW/fineweb-edu",
+                          name="sample-10BT", split="train", streaming=True)
+
+        def text_iter():
+            for i, ex in enumerate(ds):
+                if i >= n_docs:
+                    break
+                yield ex["text"]
+
+        cfg = TokenizerConfig(vocab_size=vocab_size,
+                              special_tokens=("<pad>", "<eos>", "<unk>"))
+        tok = cls(cfg)
+        tok.train_from_iterator(text_iter())
+        tok.save(save_path)
+        print(f"[HFBPETokenizer] Saved → {save_path}  "
+              f"(pad={tok.pad_id}, eos={tok.eos_id}, unk={tok.unk_id})")
+        return tok
+
 class BPETokenizer:
     """
     Byte Pair Encoding (BPE) Tokenizer with GPT-4 style regex splitting.

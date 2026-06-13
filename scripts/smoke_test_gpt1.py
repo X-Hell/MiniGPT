@@ -21,9 +21,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 
 import numpy as np
 from minigpt.backend import xp
-from minigpt.config import ModelConfig, TrainConfig
+from minigpt.config import ModelConfig
 from minigpt.model import MiniTransformer
-from minigpt.optimizer import Adam, LRSchedule, build_param_groups
+from minigpt.optimizer import LRSchedule, build_param_groups
 
 # ---- 1. Small-scale instantiation (d=384, L=6 — much faster than 117M) -------
 cfg = ModelConfig(d_model=384, n_layers=6, n_heads=6,

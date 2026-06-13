@@ -1,10 +1,12 @@
-from typing import List, Dict, Tuple, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 import os
 import pickle
 try:
     import regex as re
+    _HAS_UNICODE_REGEX = True
 except ImportError:
     import re
+    _HAS_UNICODE_REGEX = False
 from .config import TokenizerConfig
 
 
@@ -51,7 +53,7 @@ class HFBPETokenizer:
 
     # ---- train / save / load ------------------------------------------------
 
-    def train_from_iterator(self, text_iter, min_frequency: int = 2):
+    def train_from_iterator(self, text_iter: Iterable[str], min_frequency: int = 2) -> None:
         """Train on an iterator of strings (one document per item)."""
         try:
             from tokenizers.trainers import BpeTrainer
@@ -66,16 +68,18 @@ class HFBPETokenizer:
         self._tk.train_from_iterator(text_iter, trainer=trainer)
         self._cache_special_ids()
 
-    def train(self, text: str):
+    def train(self, text: str) -> None:
         """Train on a single string (splits on newlines for the iterator)."""
         self.train_from_iterator(iter(text.split("\n")),
                                  min_frequency=self.config.min_frequency)
 
-    def save(self, path: str = "tokenizer_hf.json"):
+    def save(self, path: str = "tokenizer_hf.json") -> None:
+        """Serialize tokenizer to JSON file."""
         os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
         self._tk.save(path)
 
-    def load(self, path: str):
+    def load(self, path: str) -> None:
+        """Load tokenizer state from JSON file."""
         try:
             from tokenizers import Tokenizer
         except ImportError as e:
@@ -91,9 +95,11 @@ class HFBPETokenizer:
     # ---- encode / decode (matches BPETokenizer interface) -------------------
 
     def encode(self, text: str) -> List[int]:
+        """Encode text into token IDs."""
         return self._tk.encode(text).ids
 
     def decode(self, ids: List[int]) -> str:
+        """Decode token IDs into text."""
         return self._tk.decode(ids, skip_special_tokens=False)
 
     # ---- FineWeb-Edu training recipe ----------------------------------------
@@ -101,7 +107,7 @@ class HFBPETokenizer:
     @classmethod
     def train_on_fineweb(cls, n_docs: int = 100_000,
                          vocab_size: int = 40_000,
-                         save_path: str = "assets/tokenizer_gpt1_40k.json"):
+                         save_path: str = "assets/tokenizer_gpt1_40k.json") -> "HFBPETokenizer":
         """
         Stream FineWeb-Edu, train a 40K BPE, save to JSON.
         Requires: pip install datasets tokenizers
@@ -138,7 +144,12 @@ class BPETokenizer:
         self.config = config
         self.vocab_size = config.vocab_size
         self.min_freq = config.min_frequency
-        self.pattern = config.pattern
+        # Python's stdlib `re` does not support \\p{L}/\\p{N}. Fall back to a
+        # simpler Unicode-safe token pattern when the `regex` package is absent.
+        if _HAS_UNICODE_REGEX:
+            self.pattern = config.pattern
+        else:
+            self.pattern = r"\w+|[^\w\s]|\s+"
         
         # Base vocabulary: Bytes (0-255)
         self.merges: Dict[Tuple[int, int], int] = {}

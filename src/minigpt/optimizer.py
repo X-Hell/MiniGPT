@@ -26,7 +26,7 @@ W_pos (2D) is also excluded from weight decay per GPT-1 convention.
 
 import math
 from minigpt.backend import xp
-from typing import List, Tuple, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class Adam:
@@ -169,8 +169,12 @@ class LRSchedule:
         self.total = max_steps
 
     def __call__(self, step: int) -> float:
+        if step <= 0:
+            return 0.0
         if step < self.warmup:
-            return self.peak * (step + 1) / self.warmup
+            return self.peak * step / self.warmup
+        if step == self.warmup:
+            return self.peak
         if step >= self.total:
             return self.floor
         progress = (step - self.warmup) / (self.total - self.warmup)
@@ -178,7 +182,7 @@ class LRSchedule:
         return self.floor + coeff * (self.peak - self.floor)
 
 
-def build_param_groups(model, weight_decay: float = 0.01) -> List[Dict]:
+def build_param_groups(model: Any, weight_decay: float = 0.01) -> List[Dict[str, Any]]:
     """
     Returns a list of two param-group dicts suitable for `Adam.step_grouped`:
         [{'params': [...], 'weight_decay': weight_decay},   # 2-D weight matrices

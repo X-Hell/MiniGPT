@@ -33,9 +33,11 @@ MiniTransformer.backward() returns:
 """
 
 from minigpt.backend import xp, scatter_add, fuse, fp16_matmul
-from typing import Tuple, Optional, List, Union
+from typing import Any, Iterator, List, Optional, Tuple
 from .config import ModelConfig
 from .optimized_kv_cache import OptimizedKVCache as KVCache
+
+Array = Any
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +70,7 @@ def _fused_gelu_backward(x, grad_out):
     return grad_out * dgelu
 
 
-def softmax(x, axis: int = -1):
+def softmax(x: Array, axis: int = -1) -> Array:
     """Numerically stable softmax with fused exp kernel."""
     x_max = xp.max(x, axis=axis, keepdims=True)
     exp_x = _fused_exp(x, x_max)
@@ -87,7 +89,8 @@ class LayerNorm:
         self.beta = xp.zeros(d_model, dtype=xp.float32)
         self.eps = eps
 
-    def forward(self, x):
+    def forward(self, x: Array) -> Array:
+        """Apply layer normalization on the last dimension."""
         # x: (..., D)
         mu = xp.mean(x, axis=-1, keepdims=True)
         var = xp.mean((x - mu) ** 2, axis=-1, keepdims=True)
@@ -95,7 +98,7 @@ class LayerNorm:
         self.x_hat = (x - mu) * self.inv_std
         return self.gamma * self.x_hat + self.beta
 
-    def backward(self, dout):
+    def backward(self, dout: Array) -> Tuple[Array, Array, Array]:
         """
         Returns (dX, d_gamma, d_beta).
         """
@@ -118,7 +121,13 @@ class LayerNorm:
 
         return dx.reshape(orig_shape), d_gamma, d_beta
 
-    def apply_grads(self, ln_grads, lr: float = 1e-3, optimizer=None):
+    def apply_grads(
+        self,
+        ln_grads: Tuple[Array, Array],
+        lr: float = 1e-3,
+        optimizer: Optional[Any] = None,
+    ) -> None:
+        """Update LayerNorm gamma/beta using either optimizer or SGD."""
         d_gamma, d_beta = ln_grads
         if optimizer:
             optimizer.step([self.gamma, self.beta], [d_gamma, d_beta], lr=lr)
@@ -149,7 +158,8 @@ class FeedForward:
 
         self.dropout_mask_hidden = None
 
-    def forward(self, x, training: bool = False):
+    def forward(self, x: Array, training: bool = False) -> Array:
+        """Run FFN forward pass with optional dropout."""
         orig_shape = x.shape
         x_flat = x.reshape(-1, self.d_model)
 
@@ -171,7 +181,7 @@ class FeedForward:
         out = fp16_matmul(h, self.W_proj) + self.b_proj
         return out.reshape(orig_shape)
 
-    def backward(self, dout, x_in):
+    def backward(self, dout: Array, x_in: Array) -> Tuple[Array, Tuple[Array, Array, Array, Array]]:
         """
         Returns (dX, (dW_fc, db_fc, dW_proj, db_proj)).
         x_in is the FFN *input* (the LN1 output in post-norm).
@@ -210,7 +220,13 @@ class FeedForward:
 
         return dx_flat.reshape(orig_shape), (dW_fc, db_fc, dW_proj, db_proj)
 
-    def apply_grads(self, grads, lr=1e-3, optimizer=None):
+    def apply_grads(
+        self,
+        grads: Tuple[Array, Array, Array, Array],
+        lr: float = 1e-3,
+        optimizer: Optional[Any] = None,
+    ) -> None:
+        """Apply FFN parameter gradients."""
         dW_fc, db_fc, dW_proj, db_proj = grads
         params = [self.W_fc, self.b_fc, self.W_proj, self.b_proj]
         grads_l = [dW_fc, db_fc, dW_proj, db_proj]
@@ -243,8 +259,15 @@ class MultiHeadAttention:
         self.W_o = xp.random.normal(scale=out_scale, size=(self.d_model, self.d_model)).astype(xp.float32)
         self.b_o = xp.zeros(self.d_model, dtype=xp.float32)
 
-    def forward(self, x, kv_cache: Optional[KVCache], start_pos: int, layer_idx: int,
-                training: bool = False):
+    def forward(
+        self,
+        x: Array,
+        kv_cache: Optional[KVCache],
+        start_pos: int,
+        layer_idx: int,
+        training: bool = False,
+    ) -> Tuple[Array, Array]:
+        """Run multi-head self-attention forward pass."""
         B, T, D = x.shape
         x_flat = x.reshape(-1, D)
 
@@ -302,7 +325,7 @@ class MultiHeadAttention:
 
         return final_out.reshape(B, T, D), attn_weights
 
-    def backward(self, dout, x_in):
+    def backward(self, dout: Array, x_in: Array) -> Tuple[Array, Tuple[Array, Array, Array, Array]]:
         """
         Returns (dX, (dW_qkv, db_qkv, dW_o, db_o)).
         x_in is the attention *input* (the raw x — NOT normalized, post-norm).
@@ -371,7 +394,13 @@ class MultiHeadAttention:
 
         return dx.reshape(B, T, D), (dW_qkv, db_qkv, dW_o, db_o)
 
-    def apply_grads(self, grads, lr=1e-3, optimizer=None):
+    def apply_grads(
+        self,
+        grads: Tuple[Array, Array, Array, Array],
+        lr: float = 1e-3,
+        optimizer: Optional[Any] = None,
+    ) -> None:
+        """Apply attention parameter gradients."""
         dW_qkv, db_qkv, dW_o, db_o = grads
         params = [self.W_qkv, self.b_qkv, self.W_o, self.b_o]
         grads_l = [dW_qkv, db_qkv, dW_o, db_o]
@@ -400,7 +429,15 @@ class TransformerBlock:
         self.cache_x = None
         self.cache_b = None
 
-    def forward(self, x, kv_cache, start_pos, layer_idx, training=False):
+    def forward(
+        self,
+        x: Array,
+        kv_cache: Optional[KVCache],
+        start_pos: int,
+        layer_idx: int,
+        training: bool = False,
+    ) -> Tuple[Array, Array]:
+        """Run one transformer block forward pass (post-norm)."""
         # Cache raw x (attention's input in post-norm)
         self.cache_x = x
 
@@ -431,7 +468,7 @@ class TransformerBlock:
 
         return y, attn_weights
 
-    def backward(self, dy):
+    def backward(self, dy: Array) -> Tuple[Array, Tuple[Any, Any, Tuple[Array, Array], Tuple[Array, Array]]]:
         """
         Returns (dX, (ffn_grads, attn_grads, (ln1_dgamma, ln1_dbeta), (ln2_dgamma, ln2_dbeta))).
         """
@@ -457,7 +494,13 @@ class TransformerBlock:
 
         return dx, (ffn_grads, attn_grads, (ln1_dgamma, ln1_dbeta), (ln2_dgamma, ln2_dbeta))
 
-    def apply_grads(self, grads, lr, optimizer=None):
+    def apply_grads(
+        self,
+        grads: Tuple[Any, Any, Tuple[Array, Array], Tuple[Array, Array]],
+        lr: float,
+        optimizer: Optional[Any] = None,
+    ) -> None:
+        """Apply gradients for all submodules in the block."""
         ffn_grads, attn_grads, ln1_grads, ln2_grads = grads
         self.ffn.apply_grads(ffn_grads, lr, optimizer)
         self.attn.apply_grads(attn_grads, lr, optimizer)
@@ -484,7 +527,8 @@ class EmbeddingLayer:
         # Smaller init for positional embeddings (GPT-2 recipe)
         self.W_pos = xp.random.normal(scale=0.01, size=(self.max_len, self.d_model)).astype(xp.float32)
 
-    def forward_seq(self, token_ids, start_pos: int = 0):
+    def forward_seq(self, token_ids: Array, start_pos: int = 0) -> Array:
+        """Lookup token + positional embeddings for a full sequence."""
         B, T = token_ids.shape
         tok_emb = self.W_emb[token_ids]                         # (B, T, D)
         pos_emb = self.W_pos[start_pos : start_pos + T]         # (T, D)
@@ -524,18 +568,18 @@ class MiniTransformer:
         self.cache_start_pos = 0
 
     # ---- mode toggle -------------------------------------------------------
-    def train(self, mode: bool = True):
+    def train(self, mode: bool = True) -> "MiniTransformer":
         """Enable dropout globally. Returns self for chaining."""
         self._training = mode
         return self
 
-    def eval(self):
+    def eval(self) -> "MiniTransformer":
         """Disable dropout globally. Returns self for chaining."""
         self._training = False
         return self
 
     # ---- parameter iteration -----------------------------------------------
-    def named_parameters(self):
+    def named_parameters(self) -> Iterator[Tuple[str, Array]]:
         """Yield (name, param) pairs for all learnable parameters."""
         yield "embeddings.W_emb", self.embeddings.W_emb
         yield "embeddings.W_pos", self.embeddings.W_pos
@@ -554,7 +598,7 @@ class MiniTransformer:
             yield f"layers.{i}.ln2.gamma", layer.ln2.gamma
             yield f"layers.{i}.ln2.beta", layer.ln2.beta
 
-    def named_parameters_with_groups(self):
+    def named_parameters_with_groups(self) -> Iterator[Tuple[str, Array, str]]:
         """
         Yield (name, param, group) tuples where group is 'decay' or 'no_decay'.
 
@@ -571,7 +615,13 @@ class MiniTransformer:
             yield name, p, ("no_decay" if is_no_decay else "decay")
 
     # ---- forward ----------------------------------------------------------
-    def forward(self, token_ids, start_pos: int = 0, training: Optional[bool] = None):
+    def forward(
+        self,
+        token_ids: Array,
+        start_pos: int = 0,
+        training: Optional[bool] = None,
+    ) -> Tuple[Array, Array]:
+        """Forward pass returning logits and final-layer attention weights."""
         if training is None:
             training = self._training
 
@@ -579,6 +629,10 @@ class MiniTransformer:
             token_ids = token_ids[xp.newaxis, :]
 
         B, T = token_ids.shape
+        if start_pos + T > self.config.max_len:
+            raise ValueError(
+                f"Sequence length overflow: start_pos({start_pos}) + T({T}) > max_len({self.config.max_len})"
+            )
         x = self.embeddings.forward_seq(token_ids, start_pos=start_pos)
 
         # Embedding dropout (GPT-1 style)
@@ -610,7 +664,7 @@ class MiniTransformer:
         return logits, all_attn_weights[-1]
 
     # ---- backward ---------------------------------------------------------
-    def backward(self, dlogits):
+    def backward(self, dlogits: Array) -> Tuple[Array, Array, List[Any], Array]:
         """
         Returns (dW_emb_out, dW_pos, layer_grads, dX_emb).
 
@@ -659,7 +713,14 @@ class MiniTransformer:
         return dW_emb_out, dW_pos, layer_grads, dX_emb
 
     # ---- apply_grads (used by the simple non-accumulated trainer) --------
-    def apply_grads(self, grads, token_ids, lr=1e-3, optimizer=None):
+    def apply_grads(
+        self,
+        grads: Tuple[Array, Array, List[Any], Array],
+        token_ids: Array,
+        lr: float = 1e-3,
+        optimizer: Optional[Any] = None,
+    ) -> None:
+        """Apply full-model gradients including tied-embedding accumulation."""
         dW_emb_out, dW_pos, layer_grads, dX_emb = grads
 
         # Per-block grads

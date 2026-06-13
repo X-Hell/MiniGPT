@@ -1,0 +1,35 @@
+# Jetson Orin Nano (8GB unified memory) timed retraining profile.
+# Assumptions:
+#   - Total memory: 8.0GB
+#   - Headless OS reserve: ~1.5GB
+#   - Runtime safety margin: 0.5GB
+#   - Training budget: 6.0GB
+#
+# GPT-1 117M config (d=768, L=12, H=12, T=512) memory estimate yields:
+#   max_batch_size = 14
+#   gradient_accumulation_steps = 5  (effective batch ~= 70)
+
+d_model: 768
+n_layers: 12
+n_heads: 12
+max_len: 512
+vocab_size: 40000
+dropout: 0.1
+
+lr: 2.5e-4
+min_lr: 1.0e-5
+warmup_steps: 2000
+weight_decay: 0.01
+betas: [0.9, 0.98]
+eps: 1.0e-8
+max_grad_norm: 1.0
+
+batch_size: 14
+gradient_accumulation_steps: 5
+total_steps: 100000
+log_interval: 10
+checkpoint_interval: 200
+
+fp16: true
+data_path: data/tokens_v256.npy
+output_dir: outputs/jetson_1hr

@@ -22,6 +22,20 @@ data/TinyStoriesV2*.txt
 plots/
 output/
 
+# Training runs (checkpoints, logs, pids — large / machine-specific)
+outputs/
+
+# Tokenized data arrays (large, regenerable)
+data/*.npy
+data/*.bin
+
+# Process / diagnostic artifacts
+*.pid
+DIAGNOSTICS_*.log
+
+# Local Claude Code settings
+.claude/settings.local.json
+
 # OS
 .DS_Store
 *.swp

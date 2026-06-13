@@ -1,0 +1,41 @@
+# GPT-1 Architecture (scaled for RTX 3060 12GB)
+
+# Model architecture
+d_model: 768
+n_layers: 12
+n_heads: 12
+max_len: 512
+vocab_size: 40000
+dropout: 0.1
+
+# Optimizer
+lr: 2.5e-4
+min_lr: 1e-5
+warmup_steps: 2000
+weight_decay: 0.01
+betas: [0.9, 0.98]
+eps: 1.0e-8
+max_grad_norm: 1.0
+
+# Training
+batch_size: 16
+gradient_accumulation_steps: 4
+total_steps: 100000
+log_interval: 100
+checkpoint_interval: 5000
+eval_interval: 1000
+
+# Data
+data_path: data/tokens_v256.npy
+# dataset: "HuggingFaceFW/fineweb-edu"
+# dataset_split: "train"
+# streaming: true
+
+# Hardware
+fp16: true
+compile: false
+device: "cuda"
+
+# Monitoring
+wandb: true
+tensorboard: true

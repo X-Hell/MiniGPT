@@ -1,0 +1,36 @@
+# GPT-1 (117M architecture) on Jetson Orin Nano Super (8GB unified memory).
+# Sized for the ~4.5-5.0GB usable GPU budget (NOT the RTX-3060 12GB configs).
+# Real local BPE tokenizer + tokenized TinyStories; FP16 forward / FP32 backward.
+
+# Model (GPT-1 architecture; d_ff auto = 4*d_model = 3072)
+d_model: 768
+n_layers: 12
+n_heads: 12
+max_len: 512
+vocab_size: 16384
+dropout: 0.1
+
+# Optimizer (GPT-1 paper settings)
+lr: 2.5e-4
+min_lr: 1.0e-5
+warmup_steps: 150          # ~9% of the ~1700-step (10h) run; then cosine decay
+weight_decay: 0.01
+betas: [0.9, 0.98]
+eps: 1.0e-8
+max_grad_norm: 1.0
+
+# Training — micro-batch 1 x accum 32 = effective batch 32
+# micro-batch 1 keeps steady-state unified-memory peak well under the 7.6GB
+# ceiling, leaving headroom for checkpoint-save host copies and eval passes.
+batch_size: 1
+gradient_accumulation_steps: 32
+total_steps: 1700          # ~10h at ~21s/step (timeout backstop at 10.5h)
+log_interval: 10
+checkpoint_interval: 200    # ~70min between checkpoints; latest.pkl is resumable
+eval_interval: 200
+
+# Data / IO
+fp16: true
+data_path: data/tinystories_train_16k.npy
+tokenizer_path: assets/tokenizer_tinystories_16k.json
+output_dir: outputs/gpt1_jetson_10h

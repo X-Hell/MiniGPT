@@ -24,6 +24,7 @@ Environment:
 
 import os
 import warnings
+from typing import Any, Dict, Optional
 
 _BACKEND = os.environ.get("MINIGPT_BACKEND", "auto").lower()
 
@@ -69,13 +70,13 @@ else:
 _MIXED_PRECISION = _USING_GPU  # Auto-enable on GPU
 
 
-def set_mixed_precision(enabled: bool):
+def set_mixed_precision(enabled: bool) -> None:
     """Enable or disable FP16 mixed precision matmul."""
     global _MIXED_PRECISION
     _MIXED_PRECISION = enabled
 
 
-def fp16_matmul(a, b):
+def fp16_matmul(a: Any, b: Any) -> Any:
     """Matrix multiply using FP16 for Tensor Core acceleration.
     Inputs are cast to FP16, result is cast back to FP32.
     No-op precision change on CPU (NumPy doesn't have Tensor Cores)."""
@@ -84,7 +85,7 @@ def fp16_matmul(a, b):
     return xp.matmul(a, b)
 
 
-def scatter_add(target, indices, source):
+def scatter_add(target: Any, indices: Any, source: Any) -> None:
     """
     Atomic scatter-add: target[indices] += source.
     Uses cupyx.scatter_add on GPU, np.add.at on CPU.
@@ -95,7 +96,7 @@ def scatter_add(target, indices, source):
         xp.add.at(target, indices, source)
 
 
-def to_cpu(array):
+def to_cpu(array: Any) -> Any:
     """
     Transfer array to CPU (NumPy). No-op if already NumPy.
     Useful for logging, saving checkpoints, and plotting.
@@ -105,7 +106,7 @@ def to_cpu(array):
     return array
 
 
-def to_device(array):
+def to_device(array: Any) -> Any:
     """
     Transfer a NumPy array to the active device (GPU if available).
     No-op if already on the correct device or if using NumPy backend.
@@ -126,12 +127,17 @@ def get_backend_info() -> str:
         return "NumPy (CPU)"
 
 
+def get_device_info() -> str:
+    """Backward-compatible alias used by older diagnostics/scripts."""
+    return get_backend_info()
+
+
 def using_gpu() -> bool:
     """Return True if CuPy/GPU backend is active."""
     return _USING_GPU
 
 
-def vram_stats() -> dict:
+def vram_stats() -> Optional[Dict[str, float]]:
     """
     Return VRAM usage stats for the active GPU.
     Returns dict with keys: total_mb, used_mb, free_mb, utilization_pct.
@@ -162,7 +168,7 @@ def log_vram(label: str = "") -> None:
 
 def estimate_model_vram(n_params: int, batch_size: int, seq_len: int,
                         d_model: int, n_layers: int, n_heads: int,
-                        mixed_precision: bool = False) -> dict:
+                        mixed_precision: bool = False) -> Dict[str, float]:
     """
     Estimate peak VRAM usage for training.
     Returns dict with component-wise breakdown in MB.
@@ -181,8 +187,8 @@ def estimate_model_vram(n_params: int, batch_size: int, seq_len: int,
     # Activations per layer (approximate):
     # Attention scores: B * H * T * T * 4 bytes
     attn_scores_mb = (batch_size * n_heads * seq_len * seq_len * 4) / (1024 ** 2)
-    # FFN intermediates: B * T * d_ff * 4 bytes (d_ff ~ 2.67 * d_model)
-    d_ff = int(2 * 4 * d_model / 3)
+    # FFN intermediates: B * T * d_ff * 4 bytes (GPT-1 uses d_ff = 4 * d_model)
+    d_ff = 4 * d_model
     ffn_mb = (batch_size * seq_len * d_ff * 4) / (1024 ** 2)
     # Layer input/output: B * T * D * 4 bytes
     layer_io_mb = (batch_size * seq_len * d_model * 4 * 2) / (1024 ** 2)

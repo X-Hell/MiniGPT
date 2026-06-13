@@ -1,5 +1,5 @@
 from minigpt.backend import xp
-from typing import Tuple, Optional
+from typing import Any, Optional, Tuple
 
 class OptimizedKVCache:
     """
@@ -27,7 +27,7 @@ class OptimizedKVCache:
         self.current_len = 0
         self.roll_count = 0
 
-    def reset(self, batch_size: Optional[int] = None):
+    def reset(self, batch_size: Optional[int] = None) -> None:
         """Reset cache pointers and optionally resize batch dimension."""
         self.current_len = 0
         self.roll_count = 0
@@ -40,7 +40,7 @@ class OptimizedKVCache:
             self.k_buffer = xp.zeros((self.n_layers, batch_size, self.n_kv_heads, self.d_head, self.max_len), dtype=xp.float32)
             self.v_buffer = xp.zeros((self.n_layers, batch_size, self.n_kv_heads, self.max_len, self.d_head), dtype=xp.float32)
 
-    def update(self, new_k, new_v, start_pos: int, layer_idx: int):
+    def update(self, new_k: Any, new_v: Any, start_pos: int, layer_idx: int) -> Tuple[Any, Any]:
         """
         Update cache with new tokens and return the valid view for attention.
 
@@ -89,4 +89,5 @@ class OptimizedKVCache:
         return k_view.astype(xp.float32), v_view.astype(xp.float32)
 
     def utilization(self) -> float:
+        """Return used cache fraction in [0, 1]."""
         return self.current_len / self.max_len

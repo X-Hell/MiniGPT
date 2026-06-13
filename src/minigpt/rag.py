@@ -15,7 +15,7 @@ class VectorStore:
         self.vectors: Optional[np.ndarray] = None
         self.chunks: List[str] = []
         
-    def add(self, vectors: np.ndarray, chunks: List[str]):
+    def add(self, vectors: np.ndarray, chunks: List[str]) -> None:
         """
         Add vectors and chunks to the store.
         vectors: (N, D) array
@@ -61,12 +61,12 @@ class VectorStore:
             
         return results
         
-    def save(self, path: str):
+    def save(self, path: str) -> None:
         """Save store to disk."""
         with open(path, 'wb') as f:
             pickle.dump({'vectors': self.vectors, 'chunks': self.chunks}, f)
             
-    def load(self, path: str):
+    def load(self, path: str) -> None:
         """Load store from disk."""
         if os.path.exists(path):
             with open(path, 'rb') as f:
@@ -170,7 +170,7 @@ class Retriever:
             
         return np.concatenate(embeddings, axis=0) # (N, D)
         
-    def index_documents(self, text_chunks: List[str]):
+    def index_documents(self, text_chunks: List[str]) -> None:
         """
         Embed and store a list of text chunks.
         """

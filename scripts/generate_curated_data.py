@@ -1,6 +1,3 @@
-
-import random
-
 # Configuration
 OUTPUT_FILE = "data/curated_dataset.txt"
 

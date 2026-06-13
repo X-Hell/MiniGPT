@@ -1,0 +1,23 @@
+# Small-scale config for smoke test
+d_model: 384
+n_layers: 6
+n_heads: 6
+max_len: 512
+vocab_size: 16384
+dropout: 0.1
+lr: 2.5e-4
+min_lr: 1e-5
+warmup_steps: 100
+weight_decay: 0.01
+betas: [0.9, 0.98]
+eps: 1.0e-8
+max_grad_norm: 1.0
+batch_size: 32
+gradient_accumulation_steps: 2
+total_steps: 500
+log_interval: 10
+checkpoint_interval: 100
+eval_interval: 100
+fp16: false
+data_path: data/tokens_v256.npy
+tokenizer_path: assets/tokenizer.model

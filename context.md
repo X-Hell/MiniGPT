@@ -188,3 +188,18 @@ At the end of each milestone:
 8. Update the **File Map** if files were added, removed, or had their ownership change.
 
 Do not rewrite history — completed milestone sections are append-only after freezing. If a later milestone invalidates a frozen milestone's claim (e.g., Milestone 3 changes the vocab size and the Milestone 0 perplexity number becomes meaningless at the new scale), add a single dated note under the frozen section ("2026-MM-DD: superseded by M3 — perplexity re-baselined to ..."), don't edit the original numbers.
+
+### ✅ Milestone 5: Production Validation & Testing (Completed 2026-04-17)
+**What was achieved:**
+- Added comprehensive `tests/test_all.py` suites covering gradients, optimizer, tokenizer, data pipeline, memory/VRAM checks, checkpoints, and edge-case recovery.
+- Replaced stale training/benchmark/gradient scripts with GPT-1-compatible implementations.
+- Added production launch/monitor tooling: `scripts/launch_72h_training.sh`, `scripts/monitor_training.py`, `scripts/calculate_vram_budget.py`.
+- Finalized production configuration in `configs/gpt1_72h.yaml` (`batch_size=16`, `gradient_accumulation_steps=4`, `vocab_size=40000`).
+
+**Key metrics:**
+- Test suites: 32 total, 30 pass, 0 fail, 2 environment-dependent skips.
+- Smoke test (CPU fallback): initial loss 9.5834 -> 7.6746 at step 10 (log: `outputs/smoke_test/training.log`).
+- Estimated VRAM for full GPT-1 config (`d=768, L=12, H=12, T=512`): 8.91 GB at `batch_size=24` (safety target < 11 GB).
+- Measured throughput in CPU smoke fallback: ~1.5K–2.0K tok/s.
+
+**Frozen — ready for GPU production preflight.**

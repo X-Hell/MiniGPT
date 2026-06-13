@@ -1,6 +1,10 @@
-import numpy as np
 import json
-from typing import List, Optional, Callable, Tuple, Dict
+import os
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import numpy as np
+
+from .backend import to_cpu, xp
 from .model import MiniTransformer
 from .tokenizer import BPETokenizer
 
@@ -21,6 +25,40 @@ Rules:
 Persona:
 "I am MiniGPT, a compact on-device language model designed for experimentation and learning."
 """
+
+
+def load_jetson_checkpoint_npz(model: MiniTransformer, checkpoint_path: str) -> Dict[str, Any]:
+    """Load `.npz` checkpoint weights into a model for Jetson inference/training.
+
+    Expected weight keys:
+      - `model::<param_name>` (preferred), or
+      - `<param_name>` (fallback)
+    """
+    if not os.path.exists(checkpoint_path):
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+
+    with np.load(checkpoint_path, allow_pickle=False) as ckpt:
+        keyset = set(ckpt.files)
+        for name, param in model.named_parameters():
+            candidates = (f"model::{name}", name)
+            src_key = next((k for k in candidates if k in keyset), None)
+            if src_key is None:
+                raise ValueError(f"Checkpoint missing parameter '{name}'")
+
+            value = ckpt[src_key]
+            if tuple(value.shape) != tuple(param.shape):
+                raise ValueError(
+                    f"Shape mismatch for {name}: checkpoint {value.shape} vs model {param.shape}"
+                )
+            param[...] = xp.asarray(value, dtype=xp.float32)
+
+        meta: Dict[str, Any] = {}
+        if "meta_json" in keyset:
+            try:
+                meta = json.loads(str(ckpt["meta_json"]))
+            except Exception:
+                meta = {}
+    return meta
 
 
 class InferenceEngine:
@@ -49,8 +87,34 @@ class InferenceEngine:
         
         return float(entropy), probs.astype(np.float32)
 
+    @staticmethod
+    def _apply_nucleus_filter(logits_row: np.ndarray, top_p: float) -> np.ndarray:
+        """Apply nucleus (top-p) filtering to a single logits vector."""
+        if top_p >= 1.0:
+            return logits_row
+
+        max_logit = np.max(logits_row)
+        probs = np.exp(logits_row - max_logit)
+        probs_sum = float(np.sum(probs))
+        if probs_sum <= 0.0 or not np.isfinite(probs_sum):
+            return logits_row
+        probs /= probs_sum
+
+        sorted_idx = np.argsort(probs)[::-1]
+        sorted_probs = probs[sorted_idx]
+        cumulative = np.cumsum(sorted_probs)
+
+        cutoff = np.searchsorted(cumulative, top_p, side="left")
+        keep = sorted_idx[: max(1, cutoff + 1)]
+
+        filtered = logits_row.copy()
+        mask = np.ones(filtered.shape[0], dtype=bool)
+        mask[keep] = False
+        filtered[mask] = -float("inf")
+        return filtered
+
     def generate(self, prompt: str, max_tokens: int = 50, temperature: float = 0.8, 
-                 top_k: int = 40, stream: bool = False,
+                 top_k: int = 40, top_p: float = 1.0, stream: bool = False,
                  repetition_penalty: float = 1.0,
                  logit_bias: Optional[Dict[int, float]] = None,
                  stop_sequences: Optional[List[str]] = None,
@@ -75,8 +139,8 @@ class InferenceEngine:
         self.model.kv_cache.reset()
         
         # 1. First pass: Prompt
-        logits, _ = self.model.forward(current_tokens, start_pos=0, training=False)
-        token_logits = logits[:, -1, :].copy() # (B, V)
+        logits, _ = self.model.forward(xp.asarray(current_tokens), start_pos=0, training=False)
+        token_logits = to_cpu(logits[:, -1, :]).astype(np.float32, copy=True)  # (B, V)
         
         generated_tokens = [[] for _ in range(B)]
         stats = [[] for _ in range(B)]
@@ -112,9 +176,17 @@ class InferenceEngine:
             
             if top_k > 0:
                 for b in range(B):
-                     if finished[b]: continue
-                     kth_val = np.partition(scaled_logits[b], -top_k)[-top_k]
-                     scaled_logits[b, scaled_logits[b] < kth_val] = -float('inf')
+                    if finished[b]:
+                        continue
+                    k_eff = min(top_k, scaled_logits.shape[-1])
+                    kth_val = np.partition(scaled_logits[b], -k_eff)[-k_eff]
+                    scaled_logits[b, scaled_logits[b] < kth_val] = -float("inf")
+
+            if 0.0 < top_p < 1.0:
+                for b in range(B):
+                    if finished[b]:
+                        continue
+                    scaled_logits[b] = self._apply_nucleus_filter(scaled_logits[b], top_p=top_p)
             
             # Stable Softmax & Entropy
             max_logits = np.max(scaled_logits, axis=1, keepdims=True)
@@ -189,8 +261,12 @@ class InferenceEngine:
 
             # Next Step Forward
             # Always run full batch to keep cache synced (easiest logic)
-            logits, _ = self.model.forward(next_tokens, start_pos=current_tokens.shape[1]-1, training=False)
-            token_logits = logits[:, 0, :]
+            logits, _ = self.model.forward(
+                xp.asarray(next_tokens),
+                start_pos=current_tokens.shape[1] - 1,
+                training=False,
+            )
+            token_logits = to_cpu(logits[:, 0, :]).astype(np.float32, copy=True)
             
         final_texts = []
         # BUG-04 FIX: Match the updated stop list (no Answer)
@@ -279,7 +355,7 @@ class InferenceEngine:
         return True, "ok"
 
 
-    def respond(self, query: str, retriever) -> dict:
+    def respond(self, query: str, retriever: Any) -> Dict[str, Any]:
         """
         High-level pipeline: Retrieve -> Refine? -> Context/Fallback -> Generate.
         """

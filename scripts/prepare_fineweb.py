@@ -1,33 +1,34 @@
 #!/usr/bin/env python3
 """
-prepare_fineweb.py — Stream FineWeb-Edu from Hugging Face and tokenize into
-.npy shards ready for MiniGPT training.
+prepare_fineweb.py — Stream FineWeb-Edu from Hugging Face, tokenize with the
+modern 16K BPE, and write a single flat uint16 `.bin` token stream per split.
+
+RAM-safe by design (the 16GB-RAM constraint):
+  - `streaming=True` never downloads the whole dataset; documents arrive one at
+    a time over HTTP.
+  - Tokens accumulate in a small Python buffer that is flushed to disk (binary
+    append + os.fsync) every `--flush_tokens` tokens, so resident RAM stays
+    near `flush_tokens * 2 bytes` (default ~20 MB) regardless of corpus size.
+  - Output is a flat `uint16` `.bin`, read back at train time via `np.memmap`
+    (see src/minigpt/dataloader.py::BinDataLoader) — micro-batches stream from
+    the NVMe SSD straight to the GPU, bypassing host RAM.
 
 Usage
 -----
-# Stream ~10 GB (≈ 5M documents) of FineWeb-Edu and write shards to data/:
-    python scripts/prepare_fineweb.py
+    # Train the 16K tokenizer (once) and write ~1B tokens to data/train.bin:
+    python scripts/prepare_fineweb.py --max_tokens 1_000_000_000
 
-# Custom options:
-    python scripts/prepare_fineweb.py \\
-        --out_dir data \\
-        --max_tokens 2_000_000_000 \\
-        --shard_size 100_000_000 \\
-        --vocab_size 8192 \\
-        --tokenizer_chars 20_000_000 \\
-        --retrain_tokenizer
+    # Reuse an existing tokenizer, custom budget:
+    python scripts/prepare_fineweb.py \
+        --out_dir data --vocab_size 16384 \
+        --tokenizer_path assets/tokenizer_modern_16k.json \
+        --max_tokens 2_000_000_000 --val_tokens 5_000_000 --flush_tokens 10_000_000
 
 Output
 ------
-  data/
-    fineweb_train_00000.npy   # uint16 token arrays, one per shard
-    fineweb_train_00001.npy
-    ...
-    fineweb_val_00000.npy
-  assets/tokenizer_fineweb.model   # BPE tokenizer trained on FineWeb text
-
-The .npy shards are directly compatible with the BPETokenizer encode/decode
-API and the MiniGPT train.py data loader.
+  data/train.bin   # flat uint16 token stream (documents joined by <eos>)
+  data/val.bin     # first --val_tokens tokens held out for validation
+  assets/tokenizer_modern_16k.json
 """
 
 import os
@@ -36,220 +37,164 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 
-# ── Make sure src/ is importable ──────────────────────────────────────────────
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 from minigpt.config import TokenizerConfig
-from minigpt.tokenizer import BPETokenizer
+from minigpt.tokenizer import HFBPETokenizer
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def get_fineweb_stream(split: str = "train", name: str = "sample-10BT"):
-    """
-    Return a streaming HuggingFace dataset iterator for FineWeb-Edu.
-
-    `name` options (approximate raw-text sizes):
-        "sample-10BT"   ~10 GB   ← default (real-world scale, tractable)
-        "sample-100BT"  ~100 GB  (large-scale pre-training)
-        "CC-MAIN-2024-10" etc.   (specific CommonCrawl dumps)
-
-    Each record has keys: id, text, token_count, dump, url, date, score.
-    """
+    """Return a streaming HuggingFace dataset iterator for FineWeb-Edu."""
     try:
         from datasets import load_dataset
     except ImportError:
-        print("[prepare_fineweb] ERROR: `datasets` library not found.")
-        print("  Install it with:  pip install datasets")
+        print("[prepare_fineweb] ERROR: `datasets` not found. pip install datasets")
         sys.exit(1)
-
-    print(f"[prepare_fineweb] Loading FineWeb-Edu stream ({name}, split={split})...")
-    ds = load_dataset(
-        "HuggingFaceFW/fineweb-edu",
-        name=name,
-        split=split,
-        streaming=True,
-    )
-    return ds
+    print(f"[prepare_fineweb] Streaming FineWeb-Edu ({name}, split={split})...")
+    return load_dataset("HuggingFaceFW/fineweb-edu", name=name, split=split, streaming=True)
 
 
-def collect_tokenizer_text(stream, n_chars: int) -> str:
-    """
-    Walk the stream and collect `n_chars` worth of text for BPE training.
-    Returns the concatenated text.
-    """
-    chunks = []
-    collected = 0
-    with tqdm(total=n_chars, unit="chars", desc="[Tokenizer corpus]") as bar:
-        for record in stream:
-            txt = record["text"]
-            remaining = n_chars - collected
-            chunks.append(txt[:remaining])
-            added = min(len(txt), remaining)
-            collected += added
-            bar.update(added)
-            if collected >= n_chars:
+def train_tokenizer(name: str, vocab_size: int, n_docs: int, save_path: str) -> HFBPETokenizer:
+    """Train a 16K HFBPE tokenizer on the first n_docs of FineWeb-Edu and save it."""
+    print(f"[prepare_fineweb] Training {vocab_size}-vocab BPE on {n_docs:,} docs ...")
+    ds = get_fineweb_stream("train", name)
+
+    def text_iter():
+        for i, ex in enumerate(ds):
+            if i >= n_docs:
                 break
-    return "\n\n".join(chunks)
+            yield ex["text"]
+
+    cfg = TokenizerConfig(vocab_size=vocab_size, special_tokens=("<pad>", "<eos>", "<unk>"))
+    tok = HFBPETokenizer(cfg)
+    tok.train_from_iterator(text_iter())
+    tok.save(save_path)
+    print(f"[prepare_fineweb] Saved tokenizer → {save_path} "
+          f"(pad={tok.pad_id}, eos={tok.eos_id}, unk={tok.unk_id})")
+    return tok
 
 
-def write_shard(tokens: list, out_dir: str, split: str, shard_idx: int):
-    """Flush a list of int token IDs to a uint16 .npy shard file."""
-    arr = np.array(tokens, dtype=np.uint16)
-    fname = f"fineweb_{split}_{shard_idx:05d}.npy"
-    path = os.path.join(out_dir, fname)
-    np.save(path, arr)
-    return path, len(arr)
+class BinWriter:
+    """Append-only uint16 writer with a bounded in-RAM buffer + fsync flushes."""
 
+    def __init__(self, path: str, flush_tokens: int):
+        self.path = path
+        self.flush_tokens = flush_tokens
+        self._buf: list = []
+        self.total = 0
+        # Truncate/create the file.
+        open(path, "wb").close()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Main
-# ─────────────────────────────────────────────────────────────────────────────
+    def add(self, ids) -> None:
+        self._buf.extend(ids)
+        if len(self._buf) >= self.flush_tokens:
+            self.flush()
+
+    def flush(self) -> None:
+        if not self._buf:
+            return
+        arr = np.asarray(self._buf, dtype=np.uint16)
+        with open(self.path, "ab") as fh:
+            fh.write(arr.tobytes())
+            fh.flush()
+            os.fsync(fh.fileno())
+        self.total += arr.size
+        self._buf = []
+
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Stream FineWeb-Edu and tokenize into .npy shards for MiniGPT"
+        description="Stream FineWeb-Edu and tokenize into flat uint16 .bin files."
     )
-    parser.add_argument("--out_dir", default="data",
-                        help="Output directory for .npy shards (default: data/)")
-    parser.add_argument("--fineweb_name", default="sample-10BT",
-                        help="FineWeb-Edu subset name (default: sample-10BT ≈ 10 GB)")
-    parser.add_argument("--max_tokens", type=int, default=2_000_000_000,
-                        help="Max tokens to write in total (default: 2B ≈ ~10 GB text)")
-    parser.add_argument("--shard_size", type=int, default=100_000_000,
-                        help="Tokens per shard .npy file (default: 100M → 200 MB uint16)")
-    parser.add_argument("--val_docs", type=int, default=5_000,
-                        help="First N documents held out as validation (default: 5000)")
-    # Tokenizer
-    parser.add_argument("--vocab_size", type=int, default=8192,
-                        help="BPE vocabulary size (default: 8192)")
-    parser.add_argument("--tokenizer_chars", type=int, default=20_000_000,
-                        help="Characters of FineWeb text used to train BPE (default: 20M)")
-    parser.add_argument("--tokenizer_path", default="assets/tokenizer_fineweb.model",
-                        help="Path to save/load the BPE tokenizer model")
-    parser.add_argument("--retrain_tokenizer", action="store_true",
-                        help="Force retrain tokenizer even if saved model exists")
+    parser.add_argument("--out_dir", default="data")
+    parser.add_argument("--fineweb_name", default="sample-10BT")
+    parser.add_argument("--max_tokens", type=int, default=1_000_000_000,
+                        help="Total training tokens to write (default: 1B)")
+    parser.add_argument("--val_tokens", type=int, default=5_000_000,
+                        help="Tokens held out for validation (written to val.bin)")
+    parser.add_argument("--flush_tokens", type=int, default=10_000_000,
+                        help="Buffer size before flushing to disk (bounds RAM)")
+    parser.add_argument("--vocab_size", type=int, default=16384)
+    parser.add_argument("--tokenizer_path", default="assets/tokenizer_modern_16k.json")
+    parser.add_argument("--tokenizer_train_docs", type=int, default=100_000,
+                        help="Docs used to train the tokenizer if it must be built")
+    parser.add_argument("--retrain_tokenizer", action="store_true")
     args = parser.parse_args()
 
     os.makedirs(args.out_dir, exist_ok=True)
     os.makedirs(os.path.dirname(args.tokenizer_path) or "assets", exist_ok=True)
 
     print("=" * 60)
-    print("  MiniGPT — FineWeb-Edu Data Preparation")
+    print("  MiniGPT — FineWeb-Edu Data Preparation (flat .bin, 16K BPE)")
     print("=" * 60)
-    print(f"  Subset   : {args.fineweb_name}")
-    print(f"  Max toks : {args.max_tokens:,}")
-    print(f"  Shard sz : {args.shard_size:,} tokens → "
-          f"{args.shard_size * 2 / 1e6:.0f} MB per shard (uint16)")
-    print(f"  Vocab    : {args.vocab_size}")
+    print(f"  Subset    : {args.fineweb_name}")
+    print(f"  Max toks  : {args.max_tokens:,}  (+{args.val_tokens:,} val)")
+    print(f"  Flush at  : {args.flush_tokens:,} tokens "
+          f"(~{args.flush_tokens * 2 / 1e6:.0f} MB RAM buffer)")
+    print(f"  Vocab     : {args.vocab_size}")
     print()
 
-    # ── 1. Train / Load BPE tokenizer ─────────────────────────────────────────
-    tok_cfg = TokenizerConfig(vocab_size=args.vocab_size)
-    tokenizer = BPETokenizer(tok_cfg)
-
+    # ── 1. Tokenizer ──────────────────────────────────────────────────────────
+    tokenizer = HFBPETokenizer(TokenizerConfig(vocab_size=args.vocab_size))
     if os.path.exists(args.tokenizer_path) and not args.retrain_tokenizer:
         tokenizer.load(args.tokenizer_path)
-        print(f"  Loaded tokenizer from {args.tokenizer_path} "
-              f"(merges: {len(tokenizer.merges)})")
+        print(f"  Loaded tokenizer from {args.tokenizer_path}")
     else:
-        print(f"  Training BPE on {args.tokenizer_chars:,} chars from FineWeb-Edu ...")
-        # Stream once for tokenizer corpus
-        stream_tok = get_fineweb_stream("train", args.fineweb_name)
-        tok_text = collect_tokenizer_text(stream_tok, args.tokenizer_chars)
-        tokenizer.train(tok_text)
-        tokenizer.save(args.tokenizer_path)
-        del tok_text  # Free memory
-
+        tokenizer = train_tokenizer(
+            args.fineweb_name, args.vocab_size,
+            args.tokenizer_train_docs, args.tokenizer_path,
+        )
     eos_id = tokenizer.eos_id
-    print(f"  EOS id   : {eos_id}")
-    print()
+    print(f"  EOS id    : {eos_id}\n")
 
-    # ── 2. Stream & tokenize into shards ──────────────────────────────────────
-    print("  Streaming FineWeb-Edu and writing tokenized shards ...")
+    # ── 2. Stream → tokenize → flat .bin ─────────────────────────────────────
+    train_path = os.path.join(args.out_dir, "train.bin")
+    val_path = os.path.join(args.out_dir, "val.bin")
+    val_writer = BinWriter(val_path, args.flush_tokens)
+    train_writer = BinWriter(train_path, args.flush_tokens)
 
     stream = get_fineweb_stream("train", args.fineweb_name)
-
-    current_split = "val"      # First val_docs docs → val shard(s)
-    val_doc_count = 0
-    shard_idx = {"train": 0, "val": 0}
-    token_counts = {"train": 0, "val": 0}
-    shard_buf = []             # Accumulates token IDs for current shard
-    total_tokens_written = 0
     total_docs = 0
-
-    pbar = tqdm(desc="Tokenizing", unit="tokens", unit_scale=True,
-                total=args.max_tokens)
+    pbar = tqdm(total=args.max_tokens, unit="tok", unit_scale=True, desc="Tokenizing")
 
     for record in stream:
-        if total_tokens_written >= args.max_tokens:
-            break
-
-        # Switch from val to train after val_docs documents
-        if current_split == "val" and val_doc_count >= args.val_docs:
-            if shard_buf:
-                path, n = write_shard(shard_buf, args.out_dir, "val",
-                                      shard_idx["val"])
-                token_counts["val"] += n
-                shard_idx["val"] += 1
-                shard_buf = []
-                print(f"\n  [Val shard {shard_idx['val']-1:05d}] {n:,} tokens → {path}")
-            current_split = "train"
-
         text = record.get("text", "")
         if not text.strip():
             continue
-
         ids = tokenizer.encode(text)
-        ids.append(eos_id)  # Document boundary
+        ids.append(eos_id)                       # document boundary
 
-        shard_buf.extend(ids)
-        n_new = len(ids)
-        total_tokens_written += n_new
+        if val_writer.total + len(val_writer._buf) < args.val_tokens:
+            val_writer.add(ids)
+        else:
+            train_writer.add(ids)
+            pbar.update(len(ids))
+
         total_docs += 1
-        pbar.update(n_new)
-
-        if current_split == "val":
-            val_doc_count += 1
-
-        # Flush shard when buffer is large enough
-        while len(shard_buf) >= args.shard_size:
-            to_write = shard_buf[:args.shard_size]
-            shard_buf = shard_buf[args.shard_size:]
-            path, n = write_shard(to_write, args.out_dir, current_split,
-                                  shard_idx[current_split])
-            token_counts[current_split] += n
-            shard_idx[current_split] += 1
-            print(f"\n  [{current_split} shard {shard_idx[current_split]-1:05d}] "
-                  f"{n:,} tokens → {path}")
+        if train_writer.total + len(train_writer._buf) >= args.max_tokens:
+            break
 
     pbar.close()
+    val_writer.flush()
+    train_writer.flush()
 
-    # Flush remaining buffer
-    if shard_buf:
-        path, n = write_shard(shard_buf, args.out_dir, current_split,
-                              shard_idx[current_split])
-        token_counts[current_split] += n
-        shard_idx[current_split] += 1
-        print(f"\n  [{current_split} shard {shard_idx[current_split]-1:05d}] "
-              f"{n:,} tokens → {path}")
-
-    print()
-    print("=" * 60)
+    print("\n" + "=" * 60)
     print("  Preparation Complete!")
     print(f"  Documents processed : {total_docs:,}")
-    print(f"  Train tokens        : {token_counts['train']:,} "
-          f"in {shard_idx['train']} shard(s)")
-    print(f"  Val tokens          : {token_counts['val']:,} "
-          f"in {shard_idx['val']} shard(s)")
-    print(f"  Total tokens        : {total_tokens_written:,}")
+    print(f"  Train tokens        : {train_writer.total:,} → {train_path}")
+    print(f"  Val tokens          : {val_writer.total:,} → {val_path}")
     print()
-    print("  Next step — train with:")
-    print(f"    python scripts/train.py --fineweb --data_dir {args.out_dir} "
-          f"--vocab_size {args.vocab_size}")
+    print("  Train with:")
+    print(f"    MINIGPT_BACKEND=cupy python scripts/train.py --data_path {train_path}")
     print("=" * 60)
+
+    # The HuggingFace streaming iterator keeps a background reconnect thread that
+    # can race the interpreter finalizer at shutdown (SIGABRT / "no thread-state"
+    # after we are already done). All token data is flushed+fsync'd above, so
+    # exit hard and clean to avoid that benign-but-alarming crash on big runs.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
 
 
 if __name__ == "__main__":

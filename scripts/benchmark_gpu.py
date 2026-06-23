@@ -43,11 +43,14 @@ def cross_entropy(logits, targets):
     probs = ex / xp.sum(ex, axis=1, keepdims=True)
 
     n = logits_flat.shape[0]
+    # Compute the loss BEFORE mutating probs into dlogits (the in-place
+    # subtraction below overwrites probs[targets], so reading it afterwards
+    # would log a negative number → nan).
+    loss = float(-xp.mean(xp.log(probs[xp.arange(n), targets_flat] + 1e-9)))
+
     dlogits = probs
     dlogits[xp.arange(n), targets_flat] -= 1
     dlogits /= n
-
-    loss = float(-xp.mean(xp.log(probs[xp.arange(n), targets_flat] + 1e-9)))
     return loss, dlogits.reshape(bsz, seq, vocab)
 
 
@@ -69,7 +72,7 @@ def benchmark_one(cfg: ModelConfig, batch_size: int, steps: int = 5) -> Dict[str
         t0 = time.time()
         logits, _ = model.forward(x, training=True)
         loss, dlogits = cross_entropy(logits, y)
-        dW_emb_out, _dW_pos, _layer_grads, dX_emb = model.backward(dlogits)
+        dW_emb_out, _layer_grads, dX_emb, _d_gamma_final = model.backward(dlogits)
 
         # Touch scatter_add path so tied-embedding accumulation is benchmarked too.
         dW_emb_total = dW_emb_out.copy()
@@ -107,13 +110,13 @@ def main() -> int:
     probes: List[Tuple[str, ModelConfig, int]] = [
         (
             "smoke-384x6",
-            ModelConfig(vocab_size=16384, d_model=384, n_layers=6, n_heads=6, max_len=512, dropout=0.1),
-            16,
+            ModelConfig(vocab_size=16384, d_model=384, n_layers=6, n_heads=6, d_ff=1024, max_len=512, dropout=0.0),
+            32,
         ),
         (
-            "gpt1-768x12",
-            ModelConfig(vocab_size=40000, d_model=768, n_layers=12, n_heads=12, max_len=512, dropout=0.1),
-            4,
+            "modern-30M-512x8",
+            ModelConfig(),  # ~30M default: d=512, L=8, H=8, d_ff=1024, V=16384
+            32,
         ),
     ]
 
@@ -130,6 +133,7 @@ def main() -> int:
                 d_model=cfg.d_model,
                 n_layers=cfg.n_layers,
                 n_heads=cfg.n_heads,
+                d_ff=cfg.d_ff,
                 mixed_precision=mixed,
             )
             print(

@@ -1,0 +1,28 @@
+{
+  "d_model": 512,
+  "n_layers": 8,
+  "n_heads": 8,
+  "max_len": 512,
+  "vocab_size": 16384,
+  "dropout": 0.0,
+
+  "lr": 0.0002,
+  "min_lr": 0.00002,
+  "warmup_steps": 3000,
+  "weight_decay": 0.1,
+  "betas": [0.9, 0.95],
+  "eps": 1e-8,
+  "max_grad_norm": 1.0,
+
+  "batch_size": 32,
+  "gradient_accumulation_steps": 4,
+  "total_steps": 36000,
+  "log_interval": 10,
+  "checkpoint_interval": 1000,
+  "eval_interval": 500,
+
+  "fp16": false,
+  "data_path": "data/train.bin",
+  "tokenizer_path": "assets/tokenizer_modern_16k.json",
+  "output_dir": "outputs/modern_30m"
+}

@@ -20,7 +20,6 @@ import math
 import os
 import pickle
 import random
-import shutil
 import sys
 import time
 from dataclasses import dataclass
@@ -44,6 +43,8 @@ from minigpt.backend import (
 from minigpt.config import ModelConfig, TokenizerConfig, TrainConfig
 from minigpt.model import MiniTransformer
 from minigpt.optimizer import Adam, LRSchedule, build_param_groups
+from minigpt.stability import apply_residual_scaling
+from minigpt.stability import save_checkpoint as save_rolling_checkpoint
 from minigpt.tokenizer import BPETokenizer
 
 ArrayLike = Any
@@ -54,31 +55,31 @@ NestedGrad = Union[ArrayLike, Tuple["NestedGrad", ...], List["NestedGrad"]]
 class RunConfig:
     """Flattened run configuration resolved from file + CLI overrides."""
 
-    d_model: int = 768
-    n_layers: int = 12
-    n_heads: int = 12
+    d_model: int = 512
+    n_layers: int = 8
+    n_heads: int = 8
     max_len: int = 512
-    vocab_size: int = 40000
-    dropout: float = 0.1
+    vocab_size: int = 16384
+    dropout: float = 0.0
 
-    lr: float = 2.5e-4
-    min_lr: float = 1e-5
+    lr: float = 3e-4
+    min_lr: float = 3e-5
     warmup_steps: int = 2000
-    weight_decay: float = 0.01
-    betas: Tuple[float, float] = (0.9, 0.98)
+    weight_decay: float = 0.1
+    betas: Tuple[float, float] = (0.9, 0.95)
     eps: float = 1e-8
     max_grad_norm: float = 1.0
 
-    batch_size: int = 8
-    gradient_accumulation_steps: int = 8
-    total_steps: int = 100000
+    batch_size: int = 32
+    gradient_accumulation_steps: int = 4
+    total_steps: int = 36000
     log_interval: int = 10
     checkpoint_interval: int = 1000
     eval_interval: int = 500
 
-    fp16: bool = True
+    fp16: bool = False
     data_path: Optional[str] = None
-    tokenizer_path: Optional[str] = "assets/tokenizer.model"
+    tokenizer_path: Optional[str] = "assets/tokenizer_modern_16k.json"
     output_dir: str = "outputs/default_run"
 
 
@@ -232,18 +233,21 @@ def discover_training_tokens(data_path: Optional[str], vocab_size: int, seed: in
     if data_path:
         candidate_paths.append(data_path)
     candidate_paths.extend([
-        "data/tokens_v256.npy",
+        "data/train.bin",
         "data/fineweb_train_00000.npy",
     ])
 
     for path in candidate_paths:
         if path and os.path.exists(path):
+            # Memory-map the token stream so it stays file-backed (reclaimable)
+            # instead of committed RAM. sample_batch() only slices small windows
+            # and upcasts each batch to int64, so the full stream never needs to
+            # be resident or int64 (which would cost ~4x the RAM). This is the
+            # 16GB-RAM-safe path for the FineWeb sample-10BT corpus.
+            if path.endswith(".bin"):
+                # Flat uint16 token stream written by prepare_fineweb.py.
+                return np.memmap(path, dtype=np.uint16, mode="r")
             if path.endswith(".npy"):
-                # Memory-map the token stream so it stays file-backed (reclaimable)
-                # instead of committed RAM — on the Jetson's unified memory this
-                # frees ~0.5GB for GPU allocations. sample_batch() only slices small
-                # windows and upcasts each batch to int64, so the full stream never
-                # needs to be resident or int64 (which would cost ~4x the RAM).
                 arr = np.load(path, mmap_mode="r")
                 if np.issubdtype(arr.dtype, np.integer):
                     return arr
@@ -299,17 +303,21 @@ def cross_entropy_loss(logits: ArrayLike, targets: ArrayLike) -> Tuple[float, Ar
 
 def consolidate_tied_embedding_grad(
     model: MiniTransformer,
-    grads: Tuple[ArrayLike, ArrayLike, List[Any], ArrayLike],
+    grads: Tuple[ArrayLike, List[Any], ArrayLike, ArrayLike],
     token_ids: ArrayLike,
-) -> Tuple[ArrayLike, ArrayLike, List[Any]]:
-    """Merge output-projection and input-lookup embedding gradients."""
+) -> Tuple[ArrayLike, List[Any], ArrayLike]:
+    """Merge output-projection and input-lookup embedding gradients.
 
-    dW_emb_out, dW_pos, layer_grads, dX_emb = grads
+    model.backward returns (dW_emb_out, layer_grads, dX_emb, d_gamma_final).
+    Returns the consolidated (dW_emb_total, layer_grads, d_gamma_final).
+    """
+
+    dW_emb_out, layer_grads, dX_emb, d_gamma_final = grads
     dW_emb_total = dW_emb_out.copy()
     flat_ids = token_ids.reshape(-1)
     flat_dX = dX_emb.reshape(-1, model.config.d_model)
     scatter_add(dW_emb_total, flat_ids, flat_dX)
-    return dW_emb_total, dW_pos, layer_grads
+    return dW_emb_total, layer_grads, d_gamma_final
 
 
 def recursive_scale(value: NestedGrad, scale: float) -> NestedGrad:
@@ -332,24 +340,23 @@ def recursive_add(a: NestedGrad, b: NestedGrad) -> NestedGrad:
     return a + b
 
 
-def global_grad_norm(grads: Tuple[ArrayLike, ArrayLike, List[Any]]) -> float:
+def global_grad_norm(grads: Tuple[ArrayLike, List[Any], ArrayLike]) -> float:
     """Compute global L2 norm across all trainable parameter gradients."""
 
-    dW_emb, dW_pos, layer_grads = grads
-    sq = float(xp.sum(dW_emb ** 2) + xp.sum(dW_pos ** 2))
+    dW_emb, layer_grads, d_gamma_final = grads
+    sq = float(xp.sum(dW_emb ** 2) + xp.sum(d_gamma_final ** 2))
 
-    for ffn_g, attn_g, (ln1_dg, ln1_db), (ln2_dg, ln2_db) in layer_grads:
-        for g in ffn_g:
+    for swiglu_g, attn_g, rms1_dg, rms2_dg in layer_grads:
+        for g in swiglu_g:
             sq += float(xp.sum(g ** 2))
         for g in attn_g:
             sq += float(xp.sum(g ** 2))
-        sq += float(xp.sum(ln1_dg ** 2) + xp.sum(ln1_db ** 2))
-        sq += float(xp.sum(ln2_dg ** 2) + xp.sum(ln2_db ** 2))
+        sq += float(xp.sum(rms1_dg ** 2) + xp.sum(rms2_dg ** 2))
 
     return math.sqrt(sq)
 
 
-def clip_grads(grads: Tuple[ArrayLike, ArrayLike, List[Any]], max_norm: float) -> Tuple[Tuple[ArrayLike, ArrayLike, List[Any]], float]:
+def clip_grads(grads: Tuple[ArrayLike, List[Any], ArrayLike], max_norm: float) -> Tuple[Tuple[ArrayLike, List[Any], ArrayLike], float]:
     """Clip gradients by global norm and return clipped grads + original norm."""
 
     norm = global_grad_norm(grads)
@@ -363,33 +370,28 @@ def clip_grads(grads: Tuple[ArrayLike, ArrayLike, List[Any]], max_norm: float) -
 def apply_grads(
     model: MiniTransformer,
     optimizer: Adam,
-    grads: Tuple[ArrayLike, ArrayLike, List[Any]],
+    grads: Tuple[ArrayLike, List[Any], ArrayLike],
     weight_decay: float,
     lr: float,
 ) -> None:
     """Apply consolidated gradients using grouped Adam updates."""
 
-    dW_emb, dW_pos, layer_grads = grads
+    dW_emb, layer_grads, d_gamma_final = grads
     grad_map: Dict[int, ArrayLike] = {
         id(model.embeddings.W_emb): dW_emb,
-        id(model.embeddings.W_pos): dW_pos,
+        id(model.final_norm.gamma): d_gamma_final,
     }
 
-    for layer, (ffn_g, attn_g, (ln1_dg, ln1_db), (ln2_dg, ln2_db)) in zip(model.layers, layer_grads):
-        dW_fc, db_fc, dW_proj, db_proj = ffn_g
-        dW_qkv, db_qkv, dW_o, db_o = attn_g
-        grad_map[id(layer.ffn.W_fc)] = dW_fc
-        grad_map[id(layer.ffn.b_fc)] = db_fc
-        grad_map[id(layer.ffn.W_proj)] = dW_proj
-        grad_map[id(layer.ffn.b_proj)] = db_proj
+    for layer, (swiglu_g, attn_g, rms1_dg, rms2_dg) in zip(model.layers, layer_grads):
+        dW_gate, dW_up, dW_down = swiglu_g
+        dW_qkv, dW_o = attn_g
+        grad_map[id(layer.ffn.W_gate)] = dW_gate
+        grad_map[id(layer.ffn.W_up)] = dW_up
+        grad_map[id(layer.ffn.W_down)] = dW_down
         grad_map[id(layer.attn.W_qkv)] = dW_qkv
-        grad_map[id(layer.attn.b_qkv)] = db_qkv
         grad_map[id(layer.attn.W_o)] = dW_o
-        grad_map[id(layer.attn.b_o)] = db_o
-        grad_map[id(layer.ln1.gamma)] = ln1_dg
-        grad_map[id(layer.ln1.beta)] = ln1_db
-        grad_map[id(layer.ln2.gamma)] = ln2_dg
-        grad_map[id(layer.ln2.beta)] = ln2_db
+        grad_map[id(layer.rms1.gamma)] = rms1_dg
+        grad_map[id(layer.rms2.gamma)] = rms2_dg
 
     param_groups = build_param_groups(model, weight_decay=weight_decay)
     grad_groups = [{"params": [grad_map[id(p)] for p in group["params"]]} for group in param_groups]
@@ -569,6 +571,7 @@ def load_checkpoint(path: str, model: MiniTransformer, optimizer: Adam) -> Dict[
         "step": int(ckpt.get("step", 0)),
         "best_val_loss": float(ckpt.get("best_val_loss", float("inf"))),
         "tokens_seen": int(ckpt.get("tokens_seen", 0)),
+        "numpy_rng_state": ckpt.get("numpy_rng_state"),
     }
 
 
@@ -588,7 +591,8 @@ def parse_args() -> argparse.Namespace:
         help="Override checkpoint save interval",
     )
     parser.add_argument("--eval_interval", type=int, default=None, help="Override eval interval")
-    parser.add_argument("--output_dir", type=str, default="outputs/run", help="Run output directory")
+    parser.add_argument("--output_dir", type=str, default=None,
+                        help="Run output directory (overrides config; falls back to config/default)")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="Checkpoint path to resume")
     parser.add_argument("--data_path", type=str, default=None, help="Optional token .npy path")
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Tokenizer file to bundle")
@@ -646,6 +650,16 @@ def main() -> int:
     )
 
     model = MiniTransformer(model_cfg)
+    if not args.resume_from_checkpoint:
+        # I-2: verify/enforce residual-stream init (idempotent; init-only).
+        apply_residual_scaling(model, model_cfg.n_layers)
+    _rep = model.init_report()
+    logger.log(
+        f"Init report: tok_emb_std={_rep['tok_emb_std']:.4f} "
+        f"has_W_pos={_rep['has_W_pos']} "
+        f"residual_target_std={_rep['residual_target_std']:.5f} "
+        f"out_proj[0]_std=(W_o={_rep['out_proj'][0][1]:.5f}, W_down={_rep['out_proj'][0][2]:.5f})"
+    )
     optimizer = Adam(
         lr=train_cfg.learning_rate,
         betas=(train_cfg.beta1, train_cfg.beta2),
@@ -694,6 +708,11 @@ def main() -> int:
         start_step = meta["step"]
         best_val_loss = meta["best_val_loss"]
         tokens_seen = meta["tokens_seen"]
+        if meta.get("numpy_rng_state") is not None:
+            # I-5: continue the data stream instead of replaying the same early
+            # batches. Older checkpoints (no RNG state) fall through unchanged.
+            np.random.set_state(meta["numpy_rng_state"])
+            logger.log("Restored NumPy RNG state from checkpoint.")
         logger.log(
             f"Resumed from {args.resume_from_checkpoint} at step={start_step} "
             f"best_val_loss={best_val_loss:.4f} tokens_seen={tokens_seen:,}"
@@ -710,7 +729,7 @@ def main() -> int:
 
     for step in range(start_step + 1, run_cfg.total_steps + 1):
         step_start = time.time()
-        accum_grads: Optional[Tuple[ArrayLike, ArrayLike, List[Any]]] = None
+        accum_grads: Optional[Tuple[ArrayLike, List[Any], ArrayLike]] = None
         accum_loss = 0.0
 
         for _ in range(run_cfg.gradient_accumulation_steps):
@@ -735,6 +754,7 @@ def main() -> int:
         if accum_grads is None:
             raise RuntimeError("Gradient accumulation produced no gradients")
 
+        model.latest_grads = accum_grads  # pre-clip grads for monitor_gradient_norms()
         clipped_grads, grad_norm = clip_grads(accum_grads, run_cfg.max_grad_norm)
         lr_now = schedule(step)
         apply_grads(model, optimizer, clipped_grads, run_cfg.weight_decay, lr_now)
@@ -749,20 +769,26 @@ def main() -> int:
             )
 
         if step % run_cfg.eval_interval == 0:
-            val_loss = evaluate(model, val_tokens, batch_size=min(run_cfg.batch_size, 8), seq_len=run_cfg.max_len, n_batches=5)
+            # I-6: 20x16 = 320 sequences (vs Run-1's 5x8=40) to cut eval variance
+            # below the EvaluationMonitor's 0.05-nat regression margin.
+            val_loss = evaluate(model, val_tokens, batch_size=16, seq_len=run_cfg.max_len, n_batches=20)
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
             logger.log(f"eval step={step:6d} val_loss={val_loss:.4f} best_val_loss={best_val_loss:.4f}")
             model.train()
 
         if step % run_cfg.checkpoint_interval == 0:
-            ckpt_path = os.path.join(run_cfg.output_dir, "checkpoints", f"step_{step:07d}.pkl")
-            save_checkpoint(ckpt_path, model, optimizer, run_cfg, step, best_val_loss, tokens_seen)
-            # Copy the file for latest.pkl instead of re-serializing the model:
-            # a second ~1.2GB host copy of params+optimizer would OOM the
-            # unified-memory Jetson. The on-disk copy is identical and cheap.
-            latest_path = os.path.join(run_cfg.output_dir, "checkpoints", "latest.pkl")
-            shutil.copyfile(ckpt_path, latest_path)
+            # I-5: rolling (keep_last=3), atomic, with optimizer + scheduler +
+            # RNG state. Refreshes latest.pkl and prunes stale step_*.pkl itself.
+            meta = {
+                "best_val_loss": best_val_loss,
+                "tokens_seen": tokens_seen,
+                "numpy_rng_state": np.random.get_state(),
+            }
+            ckpt_path = save_rolling_checkpoint(
+                model, optimizer, schedule, step, meta,
+                output_dir=run_cfg.output_dir, run_cfg=run_cfg, keep_last=3,
+            )
             logger.log(f"checkpoint saved: {ckpt_path}")
 
         if using_gpu() and step % 100 == 0:

@@ -1,0 +1,42 @@
+# MiniGPT Run 2 -- stabilized 30M config.
+# Parsed by scripts/train.py::load_config_file (flat key: value, ast.literal_eval).
+# NOTE: comments must be on their own lines -- no inline `#` after a value.
+#
+# Changes vs Run 1 (modern_30m_v1_lr3e4) and why:
+#   lr 3e-4 -> 2e-4, warmup 2000 -> 3500   (I-1/I-3: post-warmup grad mean was
+#                                            4.99 -> 10.81; first grad>20 at lr 1.86e-4)
+#   eval/checkpoint hardened in train.py    (I-5/I-6)
+#   data must be rebuilt to >=2.5B first    (I-4: looping factor was 2.38x)
+
+# --- model (unchanged: 29,368,832 params) ---
+d_model: 512
+n_layers: 8
+n_heads: 8
+max_len: 512
+vocab_size: 16384
+dropout: 0.0
+
+# --- optimizer / schedule (I-1, I-3) ---
+lr: 2e-4
+min_lr: 2e-5
+warmup_steps: 3500
+weight_decay: 0.1
+betas: [0.9, 0.95]
+eps: 1e-8
+max_grad_norm: 1.0
+
+# --- batch / precision (I-7 batch frozen at 32; I-8 FP32 deliberate) ---
+batch_size: 32
+gradient_accumulation_steps: 4
+fp16: false
+
+# --- schedule length / cadence (I-5, I-6) ---
+total_steps: 36000
+log_interval: 10
+eval_interval: 500
+checkpoint_interval: 2000
+
+# --- data (I-4: rebuild to 2.5B before launch) ---
+data_path: data/train.bin
+tokenizer_path: assets/tokenizer_modern_16k.json
+output_dir: outputs/modern_30m_v2

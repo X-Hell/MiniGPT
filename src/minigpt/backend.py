@@ -67,7 +67,11 @@ else:
 # ---------------------------------------------------------------------------
 # FP16 Mixed Precision matmul for Tensor Core acceleration
 # ---------------------------------------------------------------------------
-_MIXED_PRECISION = _USING_GPU  # Auto-enable on GPU
+# Default OFF (pure FP32). On this ~30M model the matmuls are too small for
+# Ampere Tensor Cores to beat the Python/orchestration overhead, so FP16 gave
+# ~no speedup while costing ~1GB extra VRAM (FP16 temporaries on top of the
+# FP32 master weights). Re-enable explicitly via set_mixed_precision(True).
+_MIXED_PRECISION = False
 
 
 def set_mixed_precision(enabled: bool) -> None:
@@ -78,8 +82,12 @@ def set_mixed_precision(enabled: bool) -> None:
 
 def fp16_matmul(a: Any, b: Any) -> Any:
     """Matrix multiply using FP16 for Tensor Core acceleration.
-    Inputs are cast to FP16, result is cast back to FP32.
-    No-op precision change on CPU (NumPy doesn't have Tensor Cores)."""
+
+    On the RTX 3060 (Ampere, SM86) FP16 GEMMs dispatch to the hardware Tensor
+    Cores, roughly doubling matmul throughput vs. FP32. Inputs are cast to FP16,
+    the result is accumulated and returned in FP32 (so the hand-written FP32
+    backward stays numerically stable — see README "FP16 fwd / FP32 bwd").
+    No-op precision change on CPU (NumPy has no Tensor Cores)."""
     if _MIXED_PRECISION:
         return xp.matmul(a.astype(xp.float16), b.astype(xp.float16)).astype(xp.float32)
     return xp.matmul(a, b)
@@ -168,10 +176,23 @@ def log_vram(label: str = "") -> None:
 
 def estimate_model_vram(n_params: int, batch_size: int, seq_len: int,
                         d_model: int, n_layers: int, n_heads: int,
-                        mixed_precision: bool = False) -> Dict[str, float]:
+                        d_ff: Optional[int] = None,
+                        vocab_size: Optional[int] = None,
+                        mixed_precision: bool = False,
+                        recompute_factor: float = 1.7) -> Dict[str, float]:
     """
-    Estimate peak VRAM usage for training.
+    Estimate peak VRAM usage for training the modern (SwiGLU) model.
     Returns dict with component-wise breakdown in MB.
+
+    Calibrated against the measured Run-1 peak of 11,294 MB at batch_size=32
+    (FP32) on the RTX 3060 (I-7). The original estimate (5,453 MB) under-predicted
+    by ~2.07x because it omitted two large FP32 tensors:
+
+      * logits + dlogits, each B*T*vocab*4 bytes (~1.07 GB *each* at V=16384,
+        B=32, T=512) -- only added when `vocab_size` is provided.
+      * the hand-written backward recomputes attention/SwiGLU forwards in FP32
+        (model.py), inflating peak activations by ~`recompute_factor` (1.7x,
+        empirically matched to the 11,294 MB anchor).
     """
     bytes_per_param = 2 if mixed_precision else 4  # FP16 vs FP32
 
@@ -187,19 +208,27 @@ def estimate_model_vram(n_params: int, batch_size: int, seq_len: int,
     # Activations per layer (approximate):
     # Attention scores: B * H * T * T * 4 bytes
     attn_scores_mb = (batch_size * n_heads * seq_len * seq_len * 4) / (1024 ** 2)
-    # FFN intermediates: B * T * d_ff * 4 bytes (GPT-1 uses d_ff = 4 * d_model)
-    d_ff = 4 * d_model
-    ffn_mb = (batch_size * seq_len * d_ff * 4) / (1024 ** 2)
+    # SwiGLU intermediates: gate, up, and (silu(gate)*up) are each (B, T, d_ff),
+    # so ~3 * B * T * d_ff * 4 bytes. Default d_ff = round(8/3 * d) to a mult of 64.
+    if d_ff is None:
+        d_ff = int(round((8 * d_model / 3) / 64)) * 64
+    ffn_mb = (batch_size * seq_len * d_ff * 3 * 4) / (1024 ** 2)
     # Layer input/output: B * T * D * 4 bytes
     layer_io_mb = (batch_size * seq_len * d_model * 4 * 2) / (1024 ** 2)
 
     activations_per_layer = attn_scores_mb + ffn_mb + layer_io_mb
-    total_activations = activations_per_layer * n_layers
+    # FP32 backward recompute inflates the activation peak (I-7).
+    total_activations = activations_per_layer * n_layers * recompute_factor
+
+    # Output logits + their gradient: each B * T * vocab * 4 bytes (FP32).
+    logits_mb = 0.0
+    if vocab_size:
+        logits_mb = 2.0 * (batch_size * seq_len * vocab_size * 4) / (1024 ** 2)
 
     # Working memory overhead (~20%)
-    overhead_mb = (params_mb + optim_mb + grads_mb + total_activations) * 0.20
+    overhead_mb = (params_mb + optim_mb + grads_mb + total_activations + logits_mb) * 0.20
 
-    total_mb = params_mb + optim_mb + grads_mb + total_activations + overhead_mb
+    total_mb = params_mb + optim_mb + grads_mb + total_activations + logits_mb + overhead_mb
 
     return {
         'params_mb': params_mb,
@@ -207,6 +236,7 @@ def estimate_model_vram(n_params: int, batch_size: int, seq_len: int,
         'gradients_mb': grads_mb,
         'activations_mb': total_activations,
         'activations_per_layer_mb': activations_per_layer,
+        'logits_mb': logits_mb,
         'overhead_mb': overhead_mb,
         'total_mb': total_mb,
         'fits_12gb': total_mb < 11500,  # Leave 500 MB headroom

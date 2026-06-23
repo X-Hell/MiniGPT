@@ -32,6 +32,7 @@ data/*.bin
 # Process / diagnostic artifacts
 *.pid
 DIAGNOSTICS_*.log
+status_snapshot.txt
 
 # Local Claude Code settings
 .claude/settings.local.json

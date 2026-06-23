@@ -1,46 +1,48 @@
-# MiniGPT: A From-Scratch GPT-1 in Pure NumPy / CuPy
+# MiniGPT: A From-Scratch Modern Transformer in Pure NumPy / CuPy
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Backend](https://img.shields.io/badge/backend-NumPy%20%7C%20CuPy-orange.svg)
-![Architecture](https://img.shields.io/badge/arch-GPT--1%20(2018)-purple.svg)
-![Params](https://img.shields.io/badge/params-117M%20target-green.svg)
+![Architecture](https://img.shields.io/badge/arch-RoPE%20%7C%20SwiGLU%20%7C%20RMSNorm-purple.svg)
+![Params](https://img.shields.io/badge/params-~30M-green.svg)
 
-**A faithful, dependency-light reimplementation of GPT-1 (Radford et al., 2018) — every layer, the optimizer, and the entire backward pass written by hand in NumPy / CuPy. No PyTorch, no TensorFlow, no autograd.**
+**A dependency-light, Llama-style decoder-only Transformer — every layer, the optimizer, and the entire backward pass written by hand in NumPy / CuPy. No PyTorch, no TensorFlow, no autograd.**
 
-MiniGPT demystifies the "black box" of Transformers by building one end-to-end with nothing but array math. A thin `xp` abstraction runs the *same* code on CPU (NumPy) or NVIDIA GPU (CuPy), so you can study the model on a laptop and train it on a GPU — including edge devices like the Jetson Orin.
+MiniGPT demystifies the "black box" of Transformers by building one end-to-end with nothing but array math. A thin `xp` abstraction runs the *same* code on CPU (NumPy) or NVIDIA GPU (CuPy), so you can study the model on a laptop and train it on a GPU — tuned here for an **RTX 3060 12GB** rig.
+
+> **History:** This repo previously shipped a GPT-1 (2018) faithful variant (LayerNorm/GELU/learned-positions). It has been rebuilt as a modern Llama-style model (RoPE + SwiGLU + RMSNorm). Old GPT-1 checkpoints are not compatible.
 
 ---
 
 ## What This Is
 
-This codebase implements the **GPT-1 architecture exactly as described in the 2018 paper**, with a hand-derived backward pass for every component. It began as a Llama-3-style educational model and was retrofitted to be historically faithful to GPT-1 (see the milestone history below).
+This codebase implements a **modern decoder-only Transformer** (Llama-style), with a hand-derived backward pass for every component — including RoPE, SwiGLU, and RMSNorm.
 
 | Property | Value |
 |---|---|
-| Architecture | Decoder-only Transformer (GPT-1, post-norm) |
-| Target size | **~117M params** (`d=768, L=12, H=12`) |
-| Normalization | **LayerNorm** (γ, β), post-norm block order |
-| Activation | **GELU** (tanh approximation), fused fwd/bwd kernel |
-| Positional encoding | **Learned absolute** embeddings (no RoPE) |
-| Attention | **Full multi-head** (12 heads), QKV + output biases |
-| Output head | **Tied** to token embedding; no final LayerNorm |
-| Optimizer | **Adam + coupled L2 weight decay** (classic 2018 form) |
+| Architecture | Decoder-only Transformer (pre-norm) |
+| Target size | **~30M params** (`d=512, L=8, H=8, d_ff=1024`) |
+| Normalization | **RMSNorm** (γ only), pre-norm + final norm |
+| Activation | **SwiGLU** FFN (`down(silu(gate)·up)`), fused SiLU kernel |
+| Positional encoding | **RoPE** (rotary), `theta=10000`, applied to Q/K |
+| Attention | **Full multi-head** (8 heads), **no biases** |
+| Output head | **Tied** to token embedding; final RMSNorm before projection |
+| Optimizer | **Adam + coupled L2 weight decay** |
 | Backend | `xp` abstraction over **NumPy (CPU)** and **CuPy (GPU)** |
 | Precision | FP16 forward / FP32 backward (mixed) on GPU |
 | Autograd | **None** — backward pass is hand-written |
 
 ---
 
-## Architecture (GPT-1 Faithful)
+## Architecture (modern, Llama-style)
 
-- **Standard LayerNorm** (`eps=1e-5`) with a compact Jacobian-vector-product backward.
-- **Post-norm block:** `a = x + Attn(x); b = LN1(a); c = b + FFN(b); y = LN2(c)`.
-- **GELU (tanh approx):** `0.5·x·(1 + tanh(√(2/π)·(x + 0.044715·x³)))`, fused via `cupy.fuse`.
-- **Learned absolute positions** `W_pos` added at the input layer only.
-- **Full MHA** with biases on QKV and output projections.
-- **Tied input/output embeddings** — `logits = x_final @ W_emb.Tᵀ`; saves ~30M params at 40K×768.
-- **Dropout at 4 sites** (softmax weights, attention residual, post-GELU, post-embedding), toggled by `model.train()` / `model.eval()`.
+- **RMSNorm** (`eps=1e-5`, scale γ only) with a compact Jacobian-vector-product backward; pre-norm blocks plus a final RMSNorm before the tied head.
+- **Pre-norm block:** `h = x + Attn(RMSNorm1(x)); y = h + SwiGLU(RMSNorm2(h))`.
+- **RoPE:** rotary embedding applied to Q and K per head (`theta=10000`); the backward is the inverse rotation. No learned positional table.
+- **SwiGLU FFN:** `down( silu(gate(x)) · up(x) )` — three weight matrices, no biases; `silu` and the gate are fused via `cupy.fuse`.
+- **Full MHA**, no biases anywhere (Llama convention).
+- **Tied input/output embeddings** — `logits = RMSNorm(x_final) @ W_emb.Tᵀ`.
+- **Dropout** plumbing retained (softmax, attention/FFN residual, embedding) but defaults to `0.0`.
 - **KV cache** for inference only (bypassed during training for ~10× forward speedup).
 
 ## Optimizer (GPT-1 Faithful)
@@ -86,17 +88,23 @@ MINIGPT_BACKEND=cupy python3 scripts/validate_gradients.py
 python3 scripts/generate.py --prompt "Once upon a time"
 ```
 
-### Train (GPT-1 117M target)
+### Train (modern ~30M target)
 
 ```bash
+# 0) Prepare data: stream FineWeb-Edu -> 16K BPE -> flat uint16 data/train.bin
+python3 scripts/prepare_fineweb.py --max_tokens 1_000_000_000
+
+# 1) Pick the batch/accum that maxes the 3060's VRAM
+python3 scripts/calculate_vram_budget.py
+
+# 2) Train (defaults are the modern ~30M config)
 MINIGPT_BACKEND=cupy python3 scripts/train.py \
-    --dim 768 --n_layers 12 --n_heads 12 \
-    --vocab_size 40000 --max_len 512 \
-    --batch_size 8 --accum_steps 8 \
-    --steps 100000 --lr 2.5e-4 --warmup_steps 2000 --min_lr 1e-5 \
-    --weight_decay 0.01 --grad_clip 1.0 --dropout 0.1 \
-    --save_dir checkpoints_gpt1 --save_interval 1000
+    --batch_size 32 --accum_steps 4 \
+    --data_path data/train.bin \
+    --output_dir outputs/modern_30m
 ```
+
+> Model/optimizer defaults (`d=512, L=8, H=8, d_ff=1024, V=16384, T=512`, RoPE `theta=10000`, lr `3e-4`, betas `(0.9, 0.95)`) live in `src/minigpt/config.py`. Override dims via a `--config` JSON/YAML file.
 
 > Select the compute backend with the `MINIGPT_BACKEND` env var: `numpy` (CPU) or `cupy` (GPU). The same code path runs on both.
 
@@ -107,7 +115,8 @@ MINIGPT_BACKEND=cupy python3 scripts/train.py \
 ```
 MiniGPT/
 ├── src/minigpt/
-│   ├── model.py              # GPT-1 Transformer (LayerNorm, GELU, MHA, tied head) + hand-written backward
+│   ├── model.py              # Modern Transformer (RMSNorm, RoPE, SwiGLU, tied head) + hand-written backward
+│   ├── dataloader.py         # BinDataLoader: memmap a flat uint16 .bin, stream micro-batches to GPU
 │   ├── optimizer.py          # Adam (coupled L2 WD), LRSchedule (warmup + cosine), param groups
 │   ├── config.py             # ModelConfig / TrainConfig / Jetson memory planner
 │   ├── tokenizer.py          # Legacy byte-level BPE + HuggingFace 40K BPE (HFBPETokenizer)
@@ -156,10 +165,11 @@ MiniGPT/
 | Decision | Rationale |
 |---|---|
 | Pure NumPy / CuPy, no PyTorch | From-scratch pedagogical objective — the backward pass is the point. |
-| Coupled L2 (not decoupled AdamW) | GPT-1 (2018) predates decoupled weight decay; historical fidelity. |
-| FP16 forward / FP32 backward | Tensor Cores without loss-scaling overhead; manual backward needs FP32. |
-| `cupy.fuse` element-wise kernels | Automatic CPU no-op, correct scope (element-wise, not matmul). |
+| RoPE + SwiGLU + RMSNorm | Modern Llama-style components, each with a hand-derived backward pass. |
+| FP16 forward / FP32 backward | Ampere Tensor Cores (RTX 3060, SM86) without loss-scaling overhead; manual backward needs FP32. |
+| `cupy.fuse` element-wise kernels (SiLU, RoPE combine, RMS apply) | Automatic CPU no-op, correct scope (element-wise, not matmul); portable and testable on CPU. |
 | KV cache bypassed in training | `start_pos=0` makes it unnecessary; removes the per-token Python loop bottleneck. |
+| Flat `uint16` `.bin` + `np.memmap` loader | RAM-safe over FineWeb-Edu sample-10BT on a 16GB-RAM rig — corpus stays on the NVMe SSD. |
 
 ---
 

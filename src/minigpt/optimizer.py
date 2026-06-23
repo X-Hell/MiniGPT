@@ -17,11 +17,10 @@ Hyperparameters (GPT-1 defaults):
     eps       = 1e-8
     weight_decay = 0.01
 
-1D parameters (biases, LayerNorm gammas, LayerNorm betas) are excluded from
-weight decay. This remains standard practice -- decaying the learnable scale
-of normalization layers destabilizes training.
-
-W_pos (2D) is also excluded from weight decay per GPT-1 convention.
+RMSNorm gammas (1D) are excluded from weight decay. This is standard practice --
+decaying the learnable scale of normalization layers destabilizes training. The
+modern model has no biases and no learned positional table, so the no-decay
+group is exactly the set of RMSNorm gammas.
 """
 
 import math
@@ -104,7 +103,7 @@ class Adam:
         'params' and 'weight_decay'; grad_groups mirrors the shape.
 
         This is the primary update path used by trainer.py — it respects the
-        per-group weight_decay override (0.0 for biases, LN params, and W_pos).
+        per-group weight_decay override (0.0 for RMSNorm gammas).
         """
         current_lr = lr if lr is not None else self.lr
         b1, b2 = self.betas
@@ -188,8 +187,8 @@ def build_param_groups(model: Any, weight_decay: float = 0.01) -> List[Dict[str,
         [{'params': [...], 'weight_decay': weight_decay},   # 2-D weight matrices
          {'params': [...], 'weight_decay': 0.0}]            # biases, LN, W_pos
 
-    The model is expected to expose `named_parameters_with_groups()`.
-    W_pos is 2-D but gets no weight decay per GPT-1 convention.
+    The model is expected to expose `named_parameters_with_groups()`, which puts
+    RMSNorm gammas in the no-decay group and all weight matrices in decay.
     """
     decay_params, no_decay_params = [], []
     for _, p, group in model.named_parameters_with_groups():

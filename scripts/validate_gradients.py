@@ -11,9 +11,14 @@ import numpy as np
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from minigpt.backend import get_backend_info, scatter_add, to_cpu, xp
+from minigpt.backend import get_backend_info, scatter_add, set_mixed_precision, to_cpu, xp
 from minigpt.config import ModelConfig
 from minigpt.model import MiniTransformer
+
+# Gradient checking is a correctness test: force full FP32 matmuls so the
+# finite-difference probe is not swamped by FP16 rounding (the GPU default).
+# The analytical backward already runs in FP32; this makes the forward match.
+set_mixed_precision(False)
 
 
 def loss_f64(model: MiniTransformer, token_ids, targets) -> float:
@@ -47,32 +52,27 @@ def analytical_grads(model: MiniTransformer, token_ids, targets) -> List[Tuple[s
     dlogits /= n
     dlogits = dlogits.reshape(bsz, seq, vocab)
 
-    dW_emb_out, dW_pos, layer_grads, dX_emb = model.backward(dlogits)
+    dW_emb_out, layer_grads, dX_emb, d_gamma_final = model.backward(dlogits)
     dW_emb_total = dW_emb_out.copy()
     scatter_add(dW_emb_total, token_ids.reshape(-1), dX_emb.reshape(-1, model.config.d_model))
 
     pairs: List[Tuple[str, np.ndarray, np.ndarray]] = []
     pairs.append(("W_emb", model.embeddings.W_emb, dW_emb_total))
-    pairs.append(("W_pos", model.embeddings.W_pos, dW_pos))
+    pairs.append(("final_norm.gamma", model.final_norm.gamma, d_gamma_final))
 
-    for idx, (ffn_g, attn_g, (ln1_dg, ln1_db), (ln2_dg, ln2_db)) in enumerate(layer_grads):
-        dW_fc, db_fc, dW_proj, db_proj = ffn_g
-        dW_qkv, db_qkv, dW_o, db_o = attn_g
+    for idx, (swiglu_g, attn_g, rms1_dg, rms2_dg) in enumerate(layer_grads):
+        dW_gate, dW_up, dW_down = swiglu_g
+        dW_qkv, dW_o = attn_g
         layer = model.layers[idx]
         pairs.extend(
             [
                 (f"L{idx}.W_qkv", layer.attn.W_qkv, dW_qkv),
-                (f"L{idx}.b_qkv", layer.attn.b_qkv, db_qkv),
                 (f"L{idx}.W_o", layer.attn.W_o, dW_o),
-                (f"L{idx}.b_o", layer.attn.b_o, db_o),
-                (f"L{idx}.W_fc", layer.ffn.W_fc, dW_fc),
-                (f"L{idx}.b_fc", layer.ffn.b_fc, db_fc),
-                (f"L{idx}.W_proj", layer.ffn.W_proj, dW_proj),
-                (f"L{idx}.b_proj", layer.ffn.b_proj, db_proj),
-                (f"L{idx}.ln1.gamma", layer.ln1.gamma, ln1_dg),
-                (f"L{idx}.ln1.beta", layer.ln1.beta, ln1_db),
-                (f"L{idx}.ln2.gamma", layer.ln2.gamma, ln2_dg),
-                (f"L{idx}.ln2.beta", layer.ln2.beta, ln2_db),
+                (f"L{idx}.W_gate", layer.ffn.W_gate, dW_gate),
+                (f"L{idx}.W_up", layer.ffn.W_up, dW_up),
+                (f"L{idx}.W_down", layer.ffn.W_down, dW_down),
+                (f"L{idx}.rms1.gamma", layer.rms1.gamma, rms1_dg),
+                (f"L{idx}.rms2.gamma", layer.rms2.gamma, rms2_dg),
             ]
         )
 
@@ -142,6 +142,7 @@ def main() -> int:
         d_ff=96,
         max_len=8,
         dropout=0.0,
+        rope_theta=10000.0,
     )
     model = MiniTransformer(cfg)
 
@@ -153,7 +154,7 @@ def main() -> int:
     all_ok = True
     for name, param, grad in pairs:
         med, p90 = finite_diff_check(model, token_ids, targets, param, grad)
-        relaxed = any(tag in name for tag in ("W_qkv", "b_qkv", "W_proj"))
+        relaxed = any(tag in name for tag in ("W_qkv", "W_down", "W_up", "W_gate"))
         if relaxed:
             ok = med < 0.50 and p90 < 1.75
         else:
